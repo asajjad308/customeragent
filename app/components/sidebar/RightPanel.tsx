@@ -265,7 +265,8 @@ export function RightPanel({
             setBotName={setBotName}
             systemPrompt={systemPrompt}
             setSystemPrompt={setSystemPrompt}
-            businessContext={setBusinessContext}
+            businessContext={businessContext}
+            setBusinessContext={setBusinessContext}
             greeting={greeting}
             setGreeting={setGreeting}
             tone={tone}

@@ -1,5 +1,6 @@
 'use client';
 
+import type { Message } from '@/hooks/useChat';
 import { motion } from 'framer-motion';
 import { Copy, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,11 +9,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 
 interface MessageBubbleProps {
-  message: {
-    role: 'user' | 'assistant';
-    content: string;
-    timestamp?: Date;
-  };
+  message: Message;
   isUser: boolean;
 }
 

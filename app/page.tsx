@@ -55,7 +55,7 @@ export default function Home() {
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
         {/* Top Bar */}
-        <div className={`h-16 ${themeClasses.sidebar} border-b ${themeClasses.sidebarBorder} backdrop-blur-xl flex items-center justify-between px-6`}>
+        <div className={`h-16 ${themeClasses.sidebar} border-b backdrop-blur-xl flex items-center justify-between px-6`}>
           <div className="flex items-center gap-3">
             <Avatar className="w-10 h-10">
               <AvatarFallback className="bg-indigo-500 text-white">
