@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Settings, Menu, BarChart3, LogOut } from 'lucide-react';
+import { Settings, Menu, LogOut } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +19,7 @@ import KnowledgeBasePage from '@/app/knowledge-base/page';
 import IntegrationsPage from '@/app/integrations/page';
 import SettingsPage from '@/app/settings/page';
 import { AgentsPage } from '@/components/agents/AgentsPage';
+import { AnalyticsPage } from '@/components/analytics/AnalyticsPage';
 
 const QUICK_CHIPS = ['Billing issue', 'Reset password', 'Upgrade plan', 'Talk to human'];
 
@@ -155,16 +156,7 @@ export default function DashboardPage() {
       case 'Knowledge Base': return <KnowledgeBasePage />;
       case 'Integrations': return <IntegrationsPage />;
       case 'Settings': return <SettingsPage />;
-      case 'Analytics':
-        return (
-          <div className="flex-1 flex items-center justify-center p-6">
-            <div className="text-center space-y-2">
-              <BarChart3 className="w-12 h-12 mx-auto text-muted-foreground/40" />
-              <h2 className="text-xl font-semibold">Analytics</h2>
-              <p className="text-muted-foreground text-sm">View analytics in the right panel → Analytics tab.</p>
-            </div>
-          </div>
-        );
+      case 'Analytics': return <AnalyticsPage />;
       case 'Conversations':
         return (
           <div className="flex-1 overflow-y-auto p-6">
