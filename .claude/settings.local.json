@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(mkdir \"c:\\\\Users\\\\Lenovo\\\\Desktop\\\\customeragent\\\\app\\\\api\\\\auth\\\\[...nextauth]\" 2>&1; echo \"done\")"
+      "Bash(mkdir \"c:\\\\Users\\\\Lenovo\\\\Desktop\\\\customeragent\\\\app\\\\api\\\\auth\\\\[...nextauth]\" 2>&1; echo \"done\")",
+      "Bash(npm run *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\Lenovo\\Desktop\\customeragent\\app\\api\\auth"

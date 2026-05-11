@@ -45,7 +45,6 @@ function StatCard({
 
 export function AnalyticsPage() {
   const { analytics, bots, conversations } = useAppStore();
-
   const avgResponseTime = useMemo(() => {
     if (!analytics.responseTimes.length) return '—';
     const avg = analytics.responseTimes.reduce((a, b) => a + b, 0) / analytics.responseTimes.length;
@@ -204,7 +203,7 @@ export function AnalyticsPage() {
                     outerRadius={90}
                     paddingAngle={4}
                     dataKey="value"
-                    label={({ name, percent }) => `${name} ${Math.round(percent * 100)}%`}
+                    label={(props) => `${props.name ?? ''} ${Math.round((props.percent ?? 0) * 100)}%`}
                     labelLine={false}
                   >
                     {feedbackPieData.map((entry, i) => (
