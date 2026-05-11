@@ -1,15 +1,13 @@
 // Load env first before any module-level initialization
 import { config } from 'dotenv';
 import { resolve } from 'path';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
-import { PrismaLibSql } from '@prisma/adapter-libsql';
 import bcrypt from 'bcryptjs';
 
 config({ path: resolve(process.cwd(), '.env') });
 
-const DB_URL = process.env.DATABASE_URL ?? 'file:./prisma/supportai.db';
-
-const adapter = new PrismaLibSql({ url: DB_URL });
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
