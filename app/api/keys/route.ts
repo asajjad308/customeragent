@@ -20,7 +20,7 @@ export async function GET() {
     orderBy: { createdAt: 'desc' },
   });
 
-  return NextResponse.json(keys.map((k) => ({ ...k, key: `${k.key.slice(0, 8)}...` })));
+  return NextResponse.json(keys.map((k: (typeof keys)[number]) => ({ ...k, key: `${k.key.slice(0, 8)}...` })));
 }
 
 export async function POST(req: NextRequest) {
