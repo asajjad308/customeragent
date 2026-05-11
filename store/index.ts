@@ -63,11 +63,9 @@ export interface FeedbackItem {
   preview: string;
   timestamp: number;
 }
-
 function uuid() {
   return crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
-
 function todayString() {
   return new Date().toISOString().slice(0, 10);
 }
