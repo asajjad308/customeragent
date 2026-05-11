@@ -10,6 +10,7 @@ import {
   User,
   Crown,
   Puzzle,
+  Bot,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +23,7 @@ import { useAppStore } from '@/store';
 
 const navigation = [
   { name: 'Live Chat', icon: MessageSquare },
+  { name: 'Agents', icon: Bot },
   { name: 'Analytics', icon: BarChart3 },
   { name: 'Conversations', icon: MessageCircle },
   { name: 'Knowledge Base', icon: HelpCircle },

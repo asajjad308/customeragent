@@ -18,6 +18,7 @@ import { useChat } from '@/hooks/useChat';
 import KnowledgeBasePage from '@/app/knowledge-base/page';
 import IntegrationsPage from '@/app/integrations/page';
 import SettingsPage from '@/app/settings/page';
+import { AgentsPage } from '@/components/agents/AgentsPage';
 
 const QUICK_CHIPS = ['Billing issue', 'Reset password', 'Upgrade plan', 'Talk to human'];
 
@@ -150,6 +151,7 @@ export default function DashboardPage() {
 
   const mainContent = () => {
     switch (selectedNav) {
+      case 'Agents': return <AgentsPage onSwitchToChat={() => setSelectedNav('Live Chat')} />;
       case 'Knowledge Base': return <KnowledgeBasePage />;
       case 'Integrations': return <IntegrationsPage />;
       case 'Settings': return <SettingsPage />;
