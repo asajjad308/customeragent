@@ -18,7 +18,7 @@ export async function GET() {
   });
 
   return NextResponse.json(
-    integrations.map((i) => ({
+    integrations.map((i: (typeof integrations)[number]) => ({
       ...i,
       config: JSON.parse(i.config),
     }))
