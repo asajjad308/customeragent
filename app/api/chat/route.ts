@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
       model: 'llama-3.3-70b-versatile',
       messages: [
         { role: 'system', content: systemPrompt },
-        ...messages,
+        ...messages.map(({ role, content }: { role: string; content: string }) => ({ role, content })),
       ],
       stream: true,
       temperature: 0.7,
