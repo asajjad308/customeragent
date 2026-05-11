@@ -1,18 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import {
-  Settings,
-  BarChart3,
-  Code,
-  Copy,
-  Check,
-  Palette,
-  MessageSquare,
-  Globe,
-  Zap,
-} from 'lucide-react';
+import { Code, Copy, Check, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,8 +9,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 
 interface ConfigProps {
@@ -51,15 +38,6 @@ function ConfigureTab({
   setTone,
   resetChat,
 }: ConfigProps) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = async (text: string) => {
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    toast.success('Copied to clipboard');
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   return (
     <div className="space-y-6">
       <div>
@@ -251,7 +229,7 @@ export function RightPanel({
   resetChat,
 }: RightPanelProps) {
   return (
-    <div className="w-80 bg-white/4 border-l border-white/8 backdrop-blur-xl p-6">
+    <div className="w-80 bg-card border-l border-border p-6">
       <Tabs defaultValue="configure" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="configure">Configure</TabsTrigger>

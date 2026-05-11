@@ -1,7 +1,5 @@
 'use client';
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
 import {
   MessageSquare,
   BarChart3,
@@ -11,6 +9,7 @@ import {
   Zap,
   User,
   Crown,
+  Puzzle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,19 +19,22 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 
 const navigation = [
-  { name: 'Live Chat', icon: MessageSquare, current: true },
-  { name: 'Analytics', icon: BarChart3, current: false },
-  { name: 'Conversations', icon: MessageCircle, current: false },
-  { name: 'Knowledge Base', icon: HelpCircle, current: false },
-  { name: 'Integrations', icon: Settings, current: false },
-  { name: 'Settings', icon: Settings, current: false },
+  { name: 'Live Chat', icon: MessageSquare },
+  { name: 'Analytics', icon: BarChart3 },
+  { name: 'Conversations', icon: MessageCircle },
+  { name: 'Knowledge Base', icon: HelpCircle },
+  { name: 'Integrations', icon: Puzzle },
+  { name: 'Settings', icon: Settings },
 ];
 
-export function LeftSidebar() {
-  const [selectedNav, setSelectedNav] = useState('Live Chat');
+interface LeftSidebarProps {
+  selectedNav: string;
+  onNavChange: (nav: string) => void;
+}
 
+export function LeftSidebar({ selectedNav, onNavChange }: LeftSidebarProps) {
   return (
-    <div className="w-60 bg-white/4 border-r border-white/8 backdrop-blur-xl flex flex-col">
+    <div className="w-60 bg-card border-r border-border flex flex-col">
       {/* Logo */}
       <div className="p-6">
         <div className="flex items-center gap-3">
@@ -53,7 +55,7 @@ export function LeftSidebar() {
               <Button
                 variant={selectedNav === item.name ? 'secondary' : 'ghost'}
                 className="w-full justify-start gap-3"
-                onClick={() => setSelectedNav(item.name)}
+                onClick={() => onNavChange(item.name)}
               >
                 <item.icon className="w-4 h-4" />
                 {item.name}
@@ -71,9 +73,9 @@ export function LeftSidebar() {
         <ScrollArea className="h-48">
           <div className="space-y-2">
             {Array.from({ length: 5 }, (_, i) => (
-              <div key={i} className="p-3 rounded-lg bg-white/4 hover:bg-white/6 cursor-pointer">
+              <div key={i} className="p-3 rounded-lg bg-muted/50 hover:bg-muted cursor-pointer">
                 <div className="text-sm font-medium">Customer {i + 1}</div>
-                <div className="text-xs text-white/60">2 hours ago</div>
+                <div className="text-xs text-muted-foreground">2 hours ago</div>
               </div>
             ))}
           </div>
@@ -84,13 +86,13 @@ export function LeftSidebar() {
 
       {/* Usage & User */}
       <div className="p-4 space-y-4">
-        <div className="bg-white/4 rounded-lg p-3">
+        <div className="bg-muted/50 rounded-lg p-3">
           <div className="flex items-center gap-2 mb-2">
             <Zap className="w-4 h-4 text-yellow-500" />
             <span className="text-sm font-medium">Usage</span>
           </div>
-          <div className="text-xs text-white/60">1,234 / 10,000 messages</div>
-          <div className="w-full bg-white/20 rounded-full h-2 mt-2">
+          <div className="text-xs text-muted-foreground">1,234 / 10,000 messages</div>
+          <div className="w-full bg-muted rounded-full h-2 mt-2">
             <div className="bg-indigo-500 h-2 rounded-full w-1/8"></div>
           </div>
         </div>
