@@ -37,41 +37,62 @@ export function useChat() {
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
 
-      if (reader) {
-        let accumulated = '';
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+      if (!reader) throw new Error('No response body.');
 
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n');
+      let accumulated = '';
+      let buffer = '';
+      let done = false;
 
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6);
-              if (data === '[DONE]') {
-                const assistantMessage: Message = {
-                  role: 'assistant',
-                  content: accumulated,
-                  timestamp: new Date(),
-                };
-                setMessages([...newMessages, assistantMessage]);
-                setCurrentResponse('');
-                break;
-              }
-              try {
-                const parsed = JSON.parse(data);
-                if (parsed.content) {
-                  accumulated += parsed.content;
-                  setCurrentResponse(accumulated);
-                }
-              } catch (e) {
-                // ignore
-              }
+      while (!done) {
+        const { done: readerDone, value } = await reader.read();
+        if (readerDone) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+
+        for (const rawLine of lines) {
+          const line = rawLine.trim();
+          if (!line.startsWith('data: ')) continue;
+
+          const data = line.slice(6);
+          if (data === '[DONE]') {
+            done = true;
+            break;
+          }
+
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed?.content) {
+              accumulated += parsed.content;
+              setCurrentResponse(accumulated);
             }
+          } catch (e) {
+            // ignore partial or malformed chunks until complete
           }
         }
       }
+
+      if (!done && buffer.trim().startsWith('data: ')) {
+        const data = buffer.trim().slice(6);
+        if (data !== '[DONE]') {
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed?.content) {
+              accumulated += parsed.content;
+              setCurrentResponse(accumulated);
+            }
+          } catch {}
+        }
+      }
+
+      const assistantMessage: Message = {
+        role: 'assistant',
+        content: accumulated,
+        timestamp: new Date(),
+      };
+      setMessages([...newMessages, assistantMessage]);
+      setCurrentResponse('');
     } catch (error) {
       console.error('Error:', error);
       const errorMessage: Message = {

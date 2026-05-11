@@ -1,0 +1,2 @@
+$body = '{"messages":[{"role":"assistant","content":"Hi! I\'m Aria 👋 What can I help you with today?"},{"role":"user","content":"Billing issue"}],"systemPrompt":"You are Aria, a warm and efficient customer support assistant. Help users with their questions clearly and concisely. Always be empathetic. If you cannot resolve an issue, offer to connect them with a human agent."}'
+Invoke-WebRequest -Uri 'http://127.0.0.1:3000/api/chat' -Method Post -ContentType 'application/json' -Body $body -UseBasicParsing | Select-Object StatusCode, Content

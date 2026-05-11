@@ -2,6 +2,14 @@ import { NextRequest } from 'next/server';
 import { groq } from '@/lib/groq';
 
 export async function POST(request: NextRequest) {
+  if (!process.env.GROQ_API_KEY) {
+    console.error('GROQ_API_KEY is not configured.');
+    return new Response(JSON.stringify({ error: 'GROQ_API_KEY is not configured.' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   try {
     const { messages, systemPrompt } = await request.json();
 
@@ -19,14 +27,20 @@ export async function POST(request: NextRequest) {
     const encoder = new TextEncoder();
     const readable = new ReadableStream({
       async start(controller) {
-        for await (const chunk of stream) {
-          const content = chunk.choices[0]?.delta?.content || '';
-          if (content) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+        try {
+          for await (const chunk of stream) {
+            const content = chunk.choices[0]?.delta?.content || '';
+            if (content) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+            }
           }
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+        } catch (streamError) {
+          console.error('Groq stream error:', streamError);
+          controller.error(streamError);
+        } finally {
+          controller.close();
         }
-        controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-        controller.close();
       },
     });
 
@@ -34,12 +48,13 @@ export async function POST(request: NextRequest) {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
+        Connection: 'keep-alive',
       },
     });
   } catch (error) {
-    console.error('Error calling Groq API:', error);
-    return new Response(JSON.stringify({ error: 'Failed to get response' }), {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error calling Groq API:', message, error);
+    return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
