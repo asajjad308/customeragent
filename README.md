@@ -1,36 +1,154 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SupportAI - Customer Support Chatbot SaaS
 
-## Getting Started
+A production-ready customer support chatbot SaaS built with Next.js, powered by Groq API, featuring multiple themes, real-time streaming, and embeddable widgets.
 
-First, run the development server:
+## Features
+
+- 🤖 Real-time AI chat with Groq's llama-3.3-70b-versatile model
+- 🎨 Three beautiful themes: Glassmorphism Dark, Neo Brutalism, Soft Aurora
+- 📊 Live analytics dashboard
+- 🔧 Configurable bot settings (name, prompt, greeting, tone)
+- 📱 Embeddable widget code
+- 💬 Quick reply chips and typing indicators
+- 📈 Message feedback system
+- 🎯 Multi-turn conversation history
+
+## Tech Stack
+
+- **Framework:** Next.js 14 (App Router)
+- **UI:** shadcn/ui + Tailwind CSS
+- **AI:** Groq API (llama-3.3-70b-versatile)
+- **Animations:** Framer Motion
+- **Icons:** Lucide React
+- **Fonts:** Geist Sans & Geist Mono
+
+## Setup Instructions
+
+### 1. Clone and Install
+
+```bash
+git clone <repository-url>
+cd customeragent
+npm install
+```
+
+### 2. Install shadcn/ui Components
+
+```bash
+npx shadcn@latest init
+npx shadcn@latest add button input textarea badge avatar card separator switch scroll-area tooltip select tabs sheet sonner dropdown-menu
+```
+
+### 3. Get Groq API Key
+
+1. Visit [console.groq.com](https://console.groq.com)
+2. Sign up for a free account
+3. Create an API key
+4. Copy the key
+
+### 4. Environment Setup
+
+Create a `.env.local` file in the root directory:
+
+```env
+GROQ_API_KEY=your_groq_api_key_here
+```
+
+### 5. Run the Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to see your chatbot!
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Default Configuration
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Bot Name:** Aria
+- **System Prompt:** You are Aria, a warm and efficient customer support assistant...
+- **Business Context:** SaaS company. 14-day free trial...
+- **Greeting:** Hi! I'm Aria 👋 What can I help you with today?
+- **Default Theme:** Glassmorphism Dark
 
-## Learn More
+## Project Structure
 
-To learn more about Next.js, take a look at the following resources:
+```
+app/
+├── api/chat/route.ts       # Groq streaming API endpoint
+├── components/
+│   ├── chat/               # Chat UI components
+│   ├── sidebar/            # Left & right panels
+│   └── ui/                 # shadcn/ui components
+├── hooks/                  # Custom React hooks
+├── lib/                    # Utilities and theme config
+└── page.tsx                # Main application
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deployment
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Vercel (Recommended)
 
-## Deploy on Vercel
+1. Push to GitHub
+2. Connect to Vercel
+3. Add `GROQ_API_KEY` environment variable
+4. Deploy!
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Other Platforms
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The app is compatible with any platform that supports Next.js:
+- Netlify
+- Railway
+- Render
+- Self-hosted
+
+## API Usage
+
+The chatbot uses Groq's OpenAI-compatible API:
+
+```typescript
+const response = await fetch('/api/chat', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    messages: [...conversationHistory],
+    systemPrompt: 'Your system prompt'
+  })
+});
+```
+
+## Customization
+
+### Themes
+
+Edit `lib/themes.ts` to add new themes or modify existing ones.
+
+### Bot Configuration
+
+All bot settings are configurable through the right panel:
+- Bot name and avatar
+- System prompt and business context
+- Greeting message
+- Response tone
+
+### Embed Code
+
+Generate embeddable widget code from the "Embed" tab in the right panel.
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+## License
+
+MIT License - feel free to use this for your own projects!
+
+## Support
+
+For questions or issues:
+- Open a GitHub issue
+- Check the [Next.js docs](https://nextjs.org/docs)
+- Visit [Groq documentation](https://console.groq.com/docs)

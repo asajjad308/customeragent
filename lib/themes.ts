@@ -1,0 +1,40 @@
+export const themes = {
+  glassmorphism: {
+    name: 'Glassmorphism Dark',
+    background: 'bg-[#0A0F1E]',
+    sidebar: 'bg-white/4 border-white/8 backdrop-blur-xl',
+    chatBg: 'bg-transparent',
+    botBubble: 'bg-white/4 border-white/8 backdrop-blur-xl',
+    userBubble: 'bg-gradient-to-r from-[#6366F1] to-[#8B5CF6]',
+    accent: 'text-[#6366F1]',
+    textPrimary: 'text-white',
+    textSecondary: 'text-white/60',
+    card: 'bg-white/4 border-white/8 backdrop-blur-xl hover:bg-white/6',
+  },
+  brutalism: {
+    name: 'Neo Brutalism',
+    background: 'bg-[#FFFBF0]',
+    sidebar: 'bg-white border-2 border-black shadow-[4px_4px_0px_#000]',
+    chatBg: 'bg-[#FFFBF0]',
+    botBubble: 'bg-[#FEF08A] border-2 border-black shadow-[4px_4px_0px_#000]',
+    userBubble: 'bg-black text-white border-2 border-black shadow-[4px_4px_0px_#000]',
+    accent: 'text-[#FF5733]',
+    textPrimary: 'text-black',
+    textSecondary: 'text-black/60',
+    card: 'bg-white border-2 border-black shadow-[4px_4px_0px_#000]',
+  },
+  aurora: {
+    name: 'Soft Aurora',
+    background: 'bg-gradient-to-br from-[#F0F4FF] via-[#FDF0FF] to-[#F0FFF4]',
+    sidebar: 'bg-white/80 backdrop-blur-xl rounded-3xl shadow-lg',
+    chatBg: 'bg-transparent',
+    botBubble: 'bg-white border border-purple-200/50 rounded-3xl shadow-soft',
+    userBubble: 'bg-gradient-to-r from-[#667EEA] to-[#764BA2] text-white rounded-3xl',
+    accent: 'text-[#A78BFA]',
+    textPrimary: 'text-gray-900',
+    textSecondary: 'text-gray-600',
+    card: 'bg-white/80 backdrop-blur-xl rounded-3xl shadow-soft',
+  },
+};
+
+export type ThemeKey = keyof typeof themes;
