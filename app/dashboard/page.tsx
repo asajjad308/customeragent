@@ -20,6 +20,7 @@ import IntegrationsPage from '@/app/integrations/page';
 import SettingsPage from '@/app/settings/page';
 import { AgentsPage } from '@/components/agents/AgentsPage';
 import { AnalyticsPage } from '@/components/analytics/AnalyticsPage';
+import { ConversationsPage } from '@/components/conversations/ConversationsPage';
 
 const QUICK_CHIPS = ['Billing issue', 'Reset password', 'Upgrade plan', 'Talk to human'];
 
@@ -159,31 +160,9 @@ export default function DashboardPage() {
       case 'Analytics': return <AnalyticsPage />;
       case 'Conversations':
         return (
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-2xl font-bold">All Conversations</h1>
-              <Button variant="ghost" size="sm" onClick={() => signOut({ callbackUrl: '/login' })}>
-                <LogOut className="w-4 h-4 mr-1.5" />
-                Sign out
-              </Button>
-            </div>
-            {conversations.length === 0 ? (
-              <p className="text-muted-foreground">No conversations yet. Start chatting!</p>
-            ) : (
-              <div className="space-y-2">
-                {conversations.map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => { setActiveConversation(c.id); setSelectedNav('Live Chat'); }}
-                    className="w-full text-left p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="font-medium truncate">{c.title}</div>
-                    <div className="text-sm text-muted-foreground">{c.messages.length} messages · {new Date(c.updatedAt).toLocaleDateString()}</div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <ConversationsPage
+            onSelect={(id) => { setActiveConversation(id); setSelectedNav('Live Chat'); }}
+          />
         );
       default:
         return (
