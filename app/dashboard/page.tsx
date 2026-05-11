@@ -109,7 +109,7 @@ export default function DashboardPage() {
   );
 
   function buildPrompt() {
-    return `${bot.systemPrompt}\n\nBusiness Context: ${bot.businessContext}\nTone: ${bot.tone}`;
+    return `${bot.systemPrompt}\n\nBusiness Context: ${bot.businessContext}\nTone: ${bot.tone}\n\nSCOPE ENFORCEMENT: You must ONLY answer questions that are relevant to your role and the business context above. If the user asks about anything outside your scope, politely decline and redirect them back to topics you can help with. Do not engage with off-topic requests under any circumstances.`;
   }
 
   const handleNewConversation = () => {

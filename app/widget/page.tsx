@@ -75,7 +75,7 @@ export default function WidgetPage({ searchParams }: WidgetPageProps) {
     setCurrentResponse('');
 
     try {
-      const fullPrompt = `${config.systemPrompt}\n\nBusiness Context: ${config.businessContext}\nTone: ${config.tone}`;
+      const fullPrompt = `${config.systemPrompt}\n\nBusiness Context: ${config.businessContext}\nTone: ${config.tone}\n\nSCOPE ENFORCEMENT: You must ONLY answer questions relevant to your role and the business context above. If the user asks about anything outside your scope, politely decline and redirect them back to topics you can help with.`;
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
