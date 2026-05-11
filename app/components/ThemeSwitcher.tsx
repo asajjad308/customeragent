@@ -1,6 +1,5 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { Palette } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -9,27 +8,28 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useTheme } from '@/hooks/useTheme';
+import { useAppStore } from '@/store';
 import { themes } from '@/lib/themes';
+import type { ThemeKey } from '@/store';
 
 export function ThemeSwitcher() {
-  const { theme, changeTheme } = useTheme();
+  const { theme, updateTheme } = useAppStore();
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon">
+        <Button variant="ghost" size="icon" aria-label="Switch theme">
           <Palette className="w-4 h-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {Object.entries(themes).map(([key, themeData]) => (
+        {(Object.keys(themes) as ThemeKey[]).map((key) => (
           <DropdownMenuItem
             key={key}
-            onClick={() => changeTheme(key as keyof typeof themes)}
+            onClick={() => updateTheme(key)}
             className={theme === key ? 'bg-accent' : ''}
           >
-            {themeData.name}
+            {themes[key].name}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

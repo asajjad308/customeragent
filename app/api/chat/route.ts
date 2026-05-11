@@ -3,7 +3,6 @@ import { groq } from '@/lib/groq';
 
 export async function POST(request: NextRequest) {
   if (!process.env.GROQ_API_KEY) {
-    console.error('GROQ_API_KEY is not configured.');
     return new Response(JSON.stringify({ error: 'GROQ_API_KEY is not configured.' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
@@ -11,16 +10,16 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { messages, systemPrompt } = await request.json();
+    const { messages, systemPrompt, model, temperature } = await request.json();
 
     const stream = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
+      model: model ?? 'llama-3.3-70b-versatile',
       messages: [
         { role: 'system', content: systemPrompt },
         ...messages.map(({ role, content }: { role: string; content: string }) => ({ role, content })),
       ],
       stream: true,
-      temperature: 0.7,
+      temperature: temperature ?? 0.7,
       max_tokens: 1024,
     });
 
@@ -53,7 +52,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Error calling Groq API:', message, error);
+    console.error('Error calling Groq API:', message);
     return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },

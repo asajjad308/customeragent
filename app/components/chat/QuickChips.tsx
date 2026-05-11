@@ -14,7 +14,7 @@ export function QuickChips({ chips, onSelect, disabled }: QuickChipsProps) {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex flex-wrap gap-2 p-4"
+      className="flex gap-2 p-4 overflow-x-auto flex-nowrap md:flex-wrap scrollbar-none"
     >
       {chips.map((chip, index) => (
         <motion.div

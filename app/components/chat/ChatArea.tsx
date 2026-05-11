@@ -6,6 +6,7 @@ import { MessageBubble } from './MessageBubble';
 import { TypingIndicator } from './TypingIndicator';
 import { QuickChips } from './QuickChips';
 import type { Message } from '@/hooks/useChat';
+import type { TakeoverState } from './HumanTakeover';
 
 interface ChatAreaProps {
   messages: Message[];
@@ -13,6 +14,8 @@ interface ChatAreaProps {
   isTyping: boolean;
   quickChips: string[];
   onQuickChipSelect: (chip: string) => void;
+  onFeedback?: (msgId: string, feedback: 'up' | 'down') => void;
+  takeoverState?: TakeoverState;
 }
 
 export function ChatArea({
@@ -21,6 +24,8 @@ export function ChatArea({
   isTyping,
   quickChips,
   onQuickChipSelect,
+  onFeedback,
+  takeoverState,
 }: ChatAreaProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -31,14 +36,16 @@ export function ChatArea({
   }, [messages, currentResponse, isTyping]);
 
   return (
-    <div className="flex-1 flex flex-col">
+    <div className="flex-1 flex flex-col min-h-0">
       <ScrollArea className="flex-1 p-4" ref={scrollRef}>
         <div className="space-y-4">
           {messages.map((message, index) => (
             <MessageBubble
-              key={index}
+              key={message.id ?? index}
               message={message}
               isUser={message.role === 'user'}
+              isHumanAgent={takeoverState === 'connected' && message.role === 'assistant' && index === messages.length - 1}
+              onFeedback={onFeedback}
             />
           ))}
 
@@ -53,7 +60,7 @@ export function ChatArea({
         </div>
       </ScrollArea>
 
-      {messages.length === 1 && !isTyping && (
+      {messages.length <= 1 && !isTyping && (
         <QuickChips
           chips={quickChips}
           onSelect={onQuickChipSelect}

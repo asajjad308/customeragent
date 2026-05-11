@@ -15,8 +15,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
+import { BotSelector } from '@/components/sidebar/BotSelector';
+import { ConversationList } from '@/components/sidebar/ConversationList';
+import { useAppStore } from '@/store';
 
 const navigation = [
   { name: 'Live Chat', icon: MessageSquare },
@@ -30,35 +32,41 @@ const navigation = [
 interface LeftSidebarProps {
   selectedNav: string;
   onNavChange: (nav: string) => void;
+  onConversationSelect: (id: string) => void;
+  onNewConversation: () => void;
 }
 
-export function LeftSidebar({ selectedNav, onNavChange }: LeftSidebarProps) {
+export function LeftSidebar({ selectedNav, onNavChange, onConversationSelect, onNewConversation }: LeftSidebarProps) {
+  const { analytics, settings } = useAppStore();
+
+  const totalMessages = analytics.totalMessages;
+  const limit = 10000;
+  const usedPercent = Math.min((totalMessages / limit) * 100, 100);
+  const progressColor = usedPercent > 85 ? 'bg-red-500' : usedPercent > 60 ? 'bg-yellow-500' : 'bg-green-500';
+
   return (
-    <div className="w-60 bg-card border-r border-border flex flex-col">
-      {/* Logo */}
-      <div className="p-6">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center">
-            <MessageSquare className="w-5 h-5 text-white" />
-          </div>
-          <span className="font-semibold text-lg">SupportAI</span>
-        </div>
+    <div className="w-60 bg-card border-r border-border flex flex-col shrink-0">
+      {/* Bot Selector (header) */}
+      <div className="p-3">
+        <BotSelector />
       </div>
 
       <Separator />
 
       {/* Navigation */}
-      <nav className="flex-1 px-4 py-6">
-        <ul className="space-y-2">
+      <nav className="px-3 py-3 shrink-0">
+        <ul className="space-y-0.5">
           {navigation.map((item) => (
             <li key={item.name}>
               <Button
                 variant={selectedNav === item.name ? 'secondary' : 'ghost'}
-                className="w-full justify-start gap-3"
+                className="w-full justify-start gap-2.5 h-8"
                 onClick={() => onNavChange(item.name)}
+                aria-label={item.name}
+                aria-current={selectedNav === item.name ? 'page' : undefined}
               >
-                <item.icon className="w-4 h-4" />
-                {item.name}
+                <item.icon className="w-4 h-4 shrink-0" />
+                <span className="text-sm">{item.name}</span>
               </Button>
             </li>
           ))}
@@ -67,52 +75,53 @@ export function LeftSidebar({ selectedNav, onNavChange }: LeftSidebarProps) {
 
       <Separator />
 
-      {/* Conversation History */}
-      <div className="flex-1 px-4 py-4">
-        <h3 className="text-sm font-medium mb-3">Recent Conversations</h3>
-        <ScrollArea className="h-48">
-          <div className="space-y-2">
-            {Array.from({ length: 5 }, (_, i) => (
-              <div key={i} className="p-3 rounded-lg bg-muted/50 hover:bg-muted cursor-pointer">
-                <div className="text-sm font-medium">Customer {i + 1}</div>
-                <div className="text-xs text-muted-foreground">2 hours ago</div>
-              </div>
-            ))}
-          </div>
-        </ScrollArea>
-      </div>
+      {/* Conversation list */}
+      {selectedNav === 'Live Chat' && (
+        <div className="flex-1 min-h-0 flex flex-col py-2">
+          <ConversationList onSelect={onConversationSelect} onNew={onNewConversation} />
+        </div>
+      )}
+
+      {selectedNav !== 'Live Chat' && <div className="flex-1" />}
 
       <Separator />
 
-      {/* Usage & User */}
-      <div className="p-4 space-y-4">
-        <div className="bg-muted/50 rounded-lg p-3">
-          <div className="flex items-center gap-2 mb-2">
-            <Zap className="w-4 h-4 text-yellow-500" />
-            <span className="text-sm font-medium">Usage</span>
+      {/* Usage */}
+      <div className="p-3 space-y-3">
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Zap className="w-3.5 h-3.5 text-yellow-500" />
+              <span className="text-xs font-medium">Usage</span>
+            </div>
+            <span className="text-xs text-muted-foreground">{totalMessages.toLocaleString()} / {limit.toLocaleString()}</span>
           </div>
-          <div className="text-xs text-muted-foreground">1,234 / 10,000 messages</div>
-          <div className="w-full bg-muted rounded-full h-2 mt-2">
-            <div className="bg-indigo-500 h-2 rounded-full w-1/8"></div>
+          <div className="w-full bg-muted rounded-full h-1.5">
+            <div className={`h-1.5 rounded-full transition-all ${progressColor}`} style={{ width: `${usedPercent}%` }} />
           </div>
+          {usedPercent > 80 && (
+            <button onClick={() => onNavChange('Settings')} className="text-xs text-orange-500 hover:underline">
+              Upgrade Plan →
+            </button>
+          )}
         </div>
 
-        <div className="flex items-center gap-3">
-          <Avatar className="w-8 h-8">
-            <AvatarFallback>
-              <User className="w-4 h-4" />
+        {/* User */}
+        <div className="flex items-center gap-2">
+          <Avatar className="w-7 h-7">
+            <AvatarFallback className="text-xs">
+              <User className="w-3.5 h-3.5" />
             </AvatarFallback>
           </Avatar>
-          <div className="flex-1">
-            <div className="text-sm font-medium">John Doe</div>
-            <Badge variant="secondary" className="text-xs">
-              <Crown className="w-3 h-3 mr-1" />
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-medium truncate">{settings.companyName}</div>
+            <Badge variant="secondary" className="text-xs py-0 h-4">
+              <Crown className="w-2.5 h-2.5 mr-0.5" />
               Pro
             </Badge>
           </div>
+          <ThemeSwitcher />
         </div>
-
-        <ThemeSwitcher />
       </div>
     </div>
   );

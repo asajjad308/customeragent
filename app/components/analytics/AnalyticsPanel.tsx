@@ -106,7 +106,7 @@ export function AnalyticsPanel() {
                 <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
                 <Tooltip
                   contentStyle={{ fontSize: 12, borderRadius: 8 }}
-                  formatter={(v: number) => [v, 'mentions']}
+                  formatter={(v) => [v as number, 'mentions']}
                 />
                 <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                   {topKeywords.map((_, i) => (
