@@ -14,10 +14,13 @@ import { EmbedPanel } from '@/components/embed/EmbedPanel';
 import { useAppStore } from '@/store';
 
 export function RightPanel() {
-  const { getActiveBot, updateBot } = useAppStore();
+  const { getActiveBot, updateBot, updateAgent } = useAppStore();
   const bot = getActiveBot();
 
-  const update = (field: string, value: string) => updateBot(bot.id, { [field]: value } as Parameters<typeof updateBot>[1]);
+  const update = (field: string, value: string) => {
+    updateBot(bot.id, { [field]: value } as Parameters<typeof updateBot>[1]);
+    updateAgent(bot.id, { [field]: value } as Parameters<typeof updateAgent>[1]);
+  };
 
   return (
     <div className="w-80 bg-card border-l border-border flex flex-col">

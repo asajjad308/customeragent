@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SupportAI Widget Test</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f8fafc;
+      color: #1e293b;
+    }
+
+    /* Fake website header */
+    header {
+      background: #ffffff;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 0 32px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .logo {
+      font-size: 20px;
+      font-weight: 700;
+      color: #6366f1;
+    }
+
+    nav a {
+      text-decoration: none;
+      color: #64748b;
+      margin-left: 24px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    nav a:hover { color: #1e293b; }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 80px 32px 60px;
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    .hero h1 {
+      font-size: 48px;
+      font-weight: 800;
+      line-height: 1.15;
+      margin-bottom: 16px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+      font-size: 18px;
+      color: #64748b;
+      margin-bottom: 32px;
+      line-height: 1.6;
+    }
+
+    .cta {
+      display: inline-block;
+      background: #6366f1;
+      color: #fff;
+      padding: 14px 32px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 16px;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+
+    .cta:hover { background: #4f46e5; }
+
+    /* Feature cards */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 24px;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 0 32px 80px;
+    }
+
+    .card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 28px;
+    }
+
+    .card-icon {
+      font-size: 32px;
+      margin-bottom: 12px;
+    }
+
+    .card h3 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .card p {
+      font-size: 14px;
+      color: #64748b;
+      line-height: 1.6;
+    }
+
+    /* Pricing strip */
+    .pricing {
+      background: #6366f1;
+      color: #fff;
+      text-align: center;
+      padding: 60px 32px;
+    }
+
+    .pricing h2 { font-size: 32px; font-weight: 800; margin-bottom: 12px; }
+    .pricing p  { font-size: 16px; opacity: 0.85; margin-bottom: 28px; }
+
+    .pricing .cta {
+      background: #ffffff;
+      color: #6366f1;
+    }
+
+    .pricing .cta:hover { background: #e0e7ff; }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 24px;
+      font-size: 13px;
+      color: #94a3b8;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    /* Hint banner */
+    .hint {
+      background: #fefce8;
+      border: 1px solid #fde047;
+      border-radius: 10px;
+      padding: 12px 20px;
+      font-size: 13px;
+      color: #713f12;
+      max-width: 480px;
+      margin: 0 auto 40px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Fake website nav -->
+  <header>
+    <span class="logo">AcmeCo</span>
+    <nav>
+      <a href="#">Products</a>
+      <a href="#">Pricing</a>
+      <a href="#">Docs</a>
+      <a href="#">Blog</a>
+    </nav>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero">
+    <h1>Ship faster.<br/>Support smarter.</h1>
+    <p>AcmeCo helps your team build, ship, and scale products — backed by AI-powered support available 24/7.</p>
+    <a href="#" class="cta">Start Free Trial</a>
+  </section>
+
+  <!-- Hint -->
+  <div class="hint">
+    👇 The chat widget is live in the bottom-right corner — powered by SupportAI
+  </div>
+
+  <!-- Feature cards -->
+  <section class="features">
+    <div class="card">
+      <div class="card-icon">⚡</div>
+      <h3>Instant Answers</h3>
+      <p>Your AI agent responds in milliseconds, day or night, without escalating to a human.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">📚</div>
+      <h3>Knowledge Base</h3>
+      <p>Upload docs, FAQs, and policies — the bot pulls relevant context automatically.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">📊</div>
+      <h3>Analytics</h3>
+      <p>Track CSAT, response times, top questions, and resolved tickets in real time.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🔌</div>
+      <h3>Easy Embed</h3>
+      <p>Two lines of code to add the widget to any website. No framework required.</p>
+    </div>
+  </section>
+
+  <!-- Pricing strip -->
+  <section class="pricing">
+    <h2>Simple, transparent pricing</h2>
+    <p>Start free. Upgrade when you're ready. Cancel anytime.</p>
+    <a href="#" class="cta">View Pricing</a>
+  </section>
+
+  <footer>
+    &copy; 2026 AcmeCo, Inc. &nbsp;·&nbsp; Powered by <strong>SupportAI</strong>
+  </footer>
+
+  <!-- SupportAI Widget -->
+  <script>
+    window.SupportAIConfig = {
+      botId: "3bf0d1fa-67fd-4453-8720-a7be58e6d307",
+      position: "bottom-right",
+      primaryColor: "#F59E0B",
+      greeting: "Hi! I'm khan 👋 How can I help?"
+    };
+  </script>
+  <script src="http://localhost:3000/embed.js" async></script>
+
+</body>
+</html>

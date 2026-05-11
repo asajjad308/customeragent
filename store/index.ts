@@ -11,6 +11,11 @@ export interface Bot {
   businessContext: string;
   greeting: string;
   tone: string;
+  slug?: string;
+  model?: string;
+  temperature?: number;
+  widgetPosition?: string;
+  isActive?: boolean;
 }
 
 export interface ChatMessage {
@@ -58,20 +63,6 @@ export interface FeedbackItem {
   timestamp: number;
 }
 
-const DEFAULT_BOT_ID = 'bot-aria';
-
-const DEFAULT_BOT: Bot = {
-  id: DEFAULT_BOT_ID,
-  name: 'Aria',
-  color: '#6366F1',
-  systemPrompt:
-    'You are Aria, a warm and efficient customer support assistant. Help users with their questions clearly and concisely. Always be empathetic. If you cannot resolve an issue, offer to connect them with a human agent.',
-  businessContext:
-    'SaaS company. 14-day free trial. Cancel anytime. Support hours: 24/7 via chat, Mon-Fri 9-5 for calls.',
-  greeting: "Hi! I'm Aria 👋 What can I help you with today?",
-  tone: 'friendly',
-};
-
 function uuid() {
   return crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
@@ -91,15 +82,15 @@ function extractKeywords(text: string): string[] {
 }
 
 export interface AppState {
-  // ─── Bots
+  // ─── Bots (populated from DB on load, not persisted)
   bots: Bot[];
   activeBotId: string;
 
-  // ─── Conversations
+  // ─── Conversations (populated from DB on load, not persisted)
   conversations: Conversation[];
   activeConversationId: string | null;
 
-  // ─── Analytics
+  // ─── Analytics (local tracking, not persisted to keep fresh)
   analytics: {
     messagesToday: number;
     totalMessages: number;
@@ -110,11 +101,11 @@ export interface AppState {
     lastResetDate: string;
   };
 
-  // ─── Knowledge Base
+  // ─── Knowledge Base (populated from DB, not persisted)
   kbEntries: KBEntry[];
   kbFiles: KBFile[];
 
-  // ─── Integrations
+  // ─── Integrations (persisted – user config)
   integrations: {
     groq: { model: string; temperature: number };
     slack: { webhookUrl: string; connected: boolean };
@@ -124,7 +115,7 @@ export interface AppState {
     shopify: { storeUrl: string; apiKey: string; connected: boolean };
   };
 
-  // ─── Settings
+  // ─── Settings (persisted for fast load)
   settings: {
     companyName: string;
     supportEmail: string;
@@ -147,21 +138,32 @@ export interface AppState {
     ipWhitelist: string;
   };
 
-  // ─── App
+  // ─── App (persisted)
   theme: ThemeKey;
   isOnboardingComplete: boolean;
   embedBotId: string;
   embedPosition: 'bottom-right' | 'bottom-left' | 'bottom-center';
   embedColor: string;
 
-  // ─── Bot actions
+  // ─── API loading state
+  isLoadingAgents: boolean;
+  isLoadingConversations: boolean;
+
+  // ─── Bot actions (local)
   addBot: (bot: Omit<Bot, 'id'>) => string;
   updateBot: (id: string, updates: Partial<Omit<Bot, 'id'>>) => void;
   deleteBot: (id: string) => void;
   setActiveBot: (id: string) => void;
   getActiveBot: () => Bot;
+  setBots: (bots: Bot[]) => void;
 
-  // ─── Conversation actions
+  // ─── DB-backed bot actions
+  loadAgents: () => Promise<void>;
+  createAgent: (data: Partial<Bot>) => Promise<Bot | null>;
+  updateAgent: (id: string, data: Partial<Bot>) => Promise<void>;
+  deleteAgent: (id: string) => Promise<void>;
+
+  // ─── Conversation actions (local)
   createConversation: (botId: string) => string;
   addMessage: (conversationId: string, message: Omit<ChatMessage, 'id'>) => string;
   updateLastMessage: (conversationId: string, content: string) => void;
@@ -169,19 +171,25 @@ export interface AppState {
   deleteConversation: (id: string) => void;
   markConversationViewed: (id: string) => void;
   setMessageFeedback: (convId: string, msgId: string, feedback: 'up' | 'down') => void;
+  setConversations: (conversations: Conversation[]) => void;
+
+  // ─── DB-backed conversation actions
+  loadConversations: (agentId?: string) => Promise<void>;
+  createConversationDB: (agentId: string) => Promise<string | null>;
 
   // ─── Analytics actions
   trackMessage: (content: string, responseTime?: number) => void;
   trackFeedback: (messageId: string, type: 'up' | 'down', preview: string) => void;
   trackResolved: () => void;
 
-  // ─── KB actions
+  // ─── KB actions (local)
   addKBEntry: (entry: Omit<KBEntry, 'id' | 'createdAt'>) => void;
   updateKBEntry: (id: string, updates: Partial<Pick<KBEntry, 'question' | 'answer'>>) => void;
   deleteKBEntry: (id: string) => void;
   addKBFile: (file: Omit<KBFile, 'id' | 'uploadedAt'>) => void;
   deleteKBFile: (id: string) => void;
   searchKB: (query: string) => string | null;
+  setKBEntries: (entries: KBEntry[]) => void;
 
   // ─── Integration actions
   updateIntegration: <K extends keyof AppState['integrations']>(
@@ -196,12 +204,22 @@ export interface AppState {
   setEmbedConfig: (config: Partial<Pick<AppState, 'embedPosition' | 'embedColor'>>) => void;
 }
 
+const DEFAULT_BOT: Bot = {
+  id: 'bot-default',
+  name: 'Support Agent',
+  color: '#6366F1',
+  systemPrompt: 'You are a helpful customer support assistant.',
+  businessContext: '',
+  greeting: "Hi! How can I help you today?",
+  tone: 'friendly',
+};
+
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
       // ─── Initial state
-      bots: [DEFAULT_BOT],
-      activeBotId: DEFAULT_BOT_ID,
+      bots: [],
+      activeBotId: '',
 
       conversations: [],
       activeConversationId: null,
@@ -256,7 +274,10 @@ export const useAppStore = create<AppState>()(
       embedPosition: 'bottom-right',
       embedColor: '#6366F1',
 
-      // ─── Bot actions
+      isLoadingAgents: false,
+      isLoadingConversations: false,
+
+      // ─── Bot actions (local)
       addBot: (bot) => {
         const id = uuid();
         set((s) => ({ bots: [...s.bots, { ...bot, id }] }));
@@ -267,15 +288,112 @@ export const useAppStore = create<AppState>()(
       deleteBot: (id) =>
         set((s) => ({
           bots: s.bots.filter((b) => b.id !== id),
-          activeBotId: s.activeBotId === id ? (s.bots[0]?.id ?? DEFAULT_BOT_ID) : s.activeBotId,
+          activeBotId: s.activeBotId === id ? (s.bots.find(b => b.id !== id)?.id ?? '') : s.activeBotId,
         })),
       setActiveBot: (id) => set({ activeBotId: id }),
       getActiveBot: () => {
         const s = get();
         return s.bots.find((b) => b.id === s.activeBotId) ?? s.bots[0] ?? DEFAULT_BOT;
       },
+      setBots: (bots) => set({ bots }),
 
-      // ─── Conversation actions
+      // ─── DB-backed bot actions
+      loadAgents: async () => {
+        set({ isLoadingAgents: true });
+        try {
+          const res = await fetch('/api/agents');
+          if (!res.ok) return;
+          const agents = await res.json();
+          const bots: Bot[] = agents.map((a: any) => ({
+            id: a.id,
+            name: a.name,
+            color: a.widgetColor ?? '#6366F1',
+            systemPrompt: a.systemPrompt,
+            businessContext: a.businessContext ?? '',
+            greeting: a.greeting,
+            tone: a.tone,
+            slug: a.slug,
+            model: a.model,
+            temperature: a.temperature,
+            widgetPosition: a.widgetPosition,
+            isActive: a.isActive,
+          }));
+          const currentId = get().activeBotId;
+          set({
+            bots,
+            activeBotId: bots.find(b => b.id === currentId)?.id ?? bots[0]?.id ?? '',
+            isLoadingAgents: false,
+          });
+        } catch {
+          set({ isLoadingAgents: false });
+        }
+      },
+      createAgent: async (data) => {
+        try {
+          const res = await fetch('/api/agents', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: data.name,
+              slug: data.slug ?? data.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+              systemPrompt: data.systemPrompt ?? 'You are a helpful assistant.',
+              greeting: data.greeting ?? 'Hi! How can I help?',
+              tone: data.tone,
+              avatarColor: data.color,
+              widgetColor: data.color,
+            }),
+          });
+          if (!res.ok) return null;
+          const agent = await res.json();
+          const bot: Bot = {
+            id: agent.id,
+            name: agent.name,
+            color: agent.widgetColor ?? '#6366F1',
+            systemPrompt: agent.systemPrompt,
+            businessContext: agent.businessContext ?? '',
+            greeting: agent.greeting,
+            tone: agent.tone,
+            slug: agent.slug,
+          };
+          set((s) => ({ bots: [...s.bots, bot], activeBotId: bot.id }));
+          return bot;
+        } catch {
+          return null;
+        }
+      },
+      updateAgent: async (id, data) => {
+        try {
+          await fetch(`/api/agents/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: data.name,
+              systemPrompt: data.systemPrompt,
+              greeting: data.greeting,
+              tone: data.tone,
+              widgetColor: data.color,
+              avatarColor: data.color,
+              businessContext: data.businessContext,
+            }),
+          });
+          set((s) => ({ bots: s.bots.map((b) => (b.id === id ? { ...b, ...data } : b)) }));
+        } catch {
+          // local update still applied
+        }
+      },
+      deleteAgent: async (id) => {
+        try {
+          await fetch(`/api/agents/${id}`, { method: 'DELETE' });
+        } catch {
+          // fall through to local delete
+        }
+        set((s) => ({
+          bots: s.bots.filter((b) => b.id !== id),
+          activeBotId: s.activeBotId === id ? (s.bots.find(b => b.id !== id)?.id ?? '') : s.activeBotId,
+        }));
+      },
+
+      // ─── Conversation actions (local)
       createConversation: (botId) => {
         const id = uuid();
         const now = Date.now();
@@ -337,6 +455,62 @@ export const useAppStore = create<AppState>()(
         const msg = conv?.messages.find((m) => m.id === msgId);
         if (msg) get().trackFeedback(msgId, feedback, msg.content.slice(0, 60));
       },
+      setConversations: (conversations) => set({ conversations }),
+
+      // ─── DB-backed conversation actions
+      loadConversations: async (agentId) => {
+        set({ isLoadingConversations: true });
+        try {
+          const url = agentId ? `/api/conversations?agentId=${agentId}` : '/api/conversations';
+          const res = await fetch(url);
+          if (!res.ok) return;
+          const data = await res.json();
+          const conversations: Conversation[] = data.map((c: any) => ({
+            id: c.id,
+            botId: c.agentId,
+            title: c.messages?.[0]?.content?.slice(0, 40) ?? 'Conversation',
+            messages: (c.messages ?? []).map((m: any) => ({
+              id: m.id,
+              role: m.role,
+              content: m.content,
+              timestamp: new Date(m.createdAt).getTime(),
+            })),
+            createdAt: new Date(c.startedAt).getTime(),
+            updatedAt: new Date(c.startedAt).getTime(),
+            isViewed: true,
+          }));
+          set({ conversations, isLoadingConversations: false });
+        } catch {
+          set({ isLoadingConversations: false });
+        }
+      },
+      createConversationDB: async (agentId) => {
+        try {
+          const res = await fetch('/api/conversations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ agentId }),
+          });
+          if (!res.ok) return null;
+          const conv = await res.json();
+          const localConv: Conversation = {
+            id: conv.id,
+            botId: agentId,
+            title: 'New conversation',
+            messages: [],
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            isViewed: true,
+          };
+          set((s) => ({
+            conversations: [localConv, ...s.conversations],
+            activeConversationId: conv.id,
+          }));
+          return conv.id;
+        } catch {
+          return null;
+        }
+      },
 
       // ─── Analytics actions
       trackMessage: (content, responseTime) => {
@@ -367,7 +541,7 @@ export const useAppStore = create<AppState>()(
       trackResolved: () =>
         set((s) => ({ analytics: { ...s.analytics, resolvedChats: s.analytics.resolvedChats + 1 } })),
 
-      // ─── KB actions
+      // ─── KB actions (local)
       addKBEntry: (entry) =>
         set((s) => ({ kbEntries: [...s.kbEntries, { ...entry, id: uuid(), createdAt: Date.now() }] })),
       updateKBEntry: (id, updates) =>
@@ -390,6 +564,7 @@ export const useAppStore = create<AppState>()(
         }
         return null;
       },
+      setKBEntries: (entries) => set({ kbEntries: entries }),
 
       // ─── Integration actions
       updateIntegration: (key, data) =>
@@ -404,12 +579,9 @@ export const useAppStore = create<AppState>()(
     {
       name: 'supportai_state',
       partialize: (s) => ({
-        bots: s.bots,
+        // Only persist UI preferences, not server data
         activeBotId: s.activeBotId,
-        conversations: s.conversations,
         analytics: s.analytics,
-        kbEntries: s.kbEntries,
-        kbFiles: s.kbFiles,
         integrations: s.integrations,
         settings: s.settings,
         theme: s.theme,

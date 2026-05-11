@@ -16,7 +16,7 @@ import { useAppStore } from '@/store';
 const COLOR_OPTIONS = ['#6366F1', '#8B5CF6', '#34D399', '#F59E0B', '#EF4444', '#3B82F6'];
 
 export function BotSelector() {
-  const { bots, activeBotId, setActiveBot, addBot, getActiveBot } = useAppStore();
+  const { bots, activeBotId, setActiveBot, createAgent, getActiveBot } = useAppStore();
   const activeBot = getActiveBot();
   const [open, setOpen] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -27,10 +27,14 @@ export function BotSelector() {
   const [greeting, setGreeting] = useState('Hi! How can I help you today?');
   const [tone, setTone] = useState('friendly');
 
-  const handleCreate = () => {
+  const [creating, setCreating] = useState(false);
+
+  const handleCreate = async () => {
     if (!name.trim()) { toast.error('Bot name is required'); return; }
-    const id = addBot({ name: name.trim(), color, systemPrompt, businessContext, greeting, tone });
-    setActiveBot(id);
+    setCreating(true);
+    const bot = await createAgent({ name: name.trim(), color, systemPrompt, businessContext, greeting, tone });
+    setCreating(false);
+    if (!bot) { toast.error('Failed to create bot'); return; }
     setShowCreate(false);
     setName(''); setColor(COLOR_OPTIONS[0]); setSystemPrompt(''); setBusinessContext(''); setGreeting('Hi! How can I help you today?'); setTone('friendly');
     toast.success(`Bot "${name}" created`);
@@ -121,7 +125,9 @@ export function BotSelector() {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={handleCreate} className="w-full" aria-label="Create bot">Create Bot</Button>
+            <Button onClick={handleCreate} className="w-full" disabled={creating} aria-label="Create bot">
+              {creating ? 'Creating…' : 'Create Bot'}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

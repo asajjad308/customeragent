@@ -1,0 +1,233 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Tenant {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  plan         String   @default("free")
+  email        String   @unique
+  logoUrl      String?
+  primaryColor String   @default("#6366F1")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  users         User[]
+  agents        Agent[]
+  conversations Conversation[]
+  apiKeys       ApiKey[]
+  settings      TenantSettings?
+  integrations  Integration[]
+  knowledgeBase KnowledgeBase[]
+
+  @@map("tenants")
+}
+
+model User {
+  id          String    @id @default(cuid())
+  tenantId    String
+  email       String
+  name        String
+  password    String
+  role        String    @default("member")
+  avatarUrl   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastLoginAt DateTime?
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sessions Session[]
+
+  @@unique([tenantId, email])
+  @@map("users")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  expires      DateTime
+  sessionToken String   @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Agent {
+  id              String   @id @default(cuid())
+  tenantId        String
+  name            String
+  slug            String
+  avatarColor     String   @default("#6366F1")
+  systemPrompt    String
+  businessContext String?
+  greeting        String
+  tone            String   @default("friendly")
+  model           String   @default("llama-3.3-70b-versatile")
+  temperature     Float    @default(0.7)
+  isActive        Boolean  @default(true)
+  widgetPosition  String   @default("bottom-right")
+  widgetColor     String   @default("#6366F1")
+  allowedDomains  String?
+  maxMsgPerHour   Int      @default(50)
+  blockedWords    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversations Conversation[]
+  apiKeys       ApiKey[]
+
+  @@unique([tenantId, slug])
+  @@map("agents")
+}
+
+model Conversation {
+  id        String    @id @default(cuid())
+  tenantId  String
+  agentId   String
+  sessionId String    @unique
+  visitorId String?
+  status    String    @default("active")
+  channel   String    @default("widget")
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+  metadata  String?
+
+  tenant   Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agent    Agent      @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  messages Message[]
+  feedback Feedback[]
+
+  @@map("conversations")
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  role           String
+  content        String
+  tokensUsed     Int?
+  responseTimeMs Int?
+  usedKnowledge  Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  feedback     Feedback?
+
+  @@map("messages")
+}
+
+model Feedback {
+  id             String   @id @default(cuid())
+  conversationId String
+  messageId      String   @unique
+  rating         Int
+  comment        String?
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+  message      Message      @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@map("feedback")
+}
+
+model ApiKey {
+  id        String    @id @default(cuid())
+  tenantId  String
+  agentId   String?
+  key       String    @unique
+  name      String
+  lastUsed  DateTime?
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agent  Agent? @relation(fields: [agentId], references: [id])
+
+  @@map("api_keys")
+}
+
+model KnowledgeBase {
+  id        String   @id @default(cuid())
+  tenantId  String
+  agentId   String?
+  type      String
+  title     String
+  content   String
+  keywords  String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("knowledge_base")
+}
+
+model Integration {
+  id        String   @id @default(cuid())
+  tenantId  String
+  type      String
+  config    String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, type])
+  @@map("integrations")
+}
+
+model TenantSettings {
+  id           String  @id @default(cuid())
+  tenantId     String  @unique
+  companyName  String?
+  supportEmail String?
+  language     String  @default("en")
+  timezone     String  @default("UTC")
+  theme        String  @default("aurora")
+  bubbleStyle  String  @default("rounded")
+  fontSize     String  @default("medium")
+  showBranding Boolean @default(true)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("tenant_settings")
+}
+
+model AnalyticsSnapshot {
+  id                 String   @id @default(cuid())
+  tenantId           String
+  agentId            String?
+  date               DateTime
+  totalMessages      Int      @default(0)
+  totalConversations Int      @default(0)
+  avgResponseTimeMs  Int      @default(0)
+  satisfactionScore  Float    @default(0)
+  resolvedCount      Int      @default(0)
+  escalatedCount     Int      @default(0)
+
+  @@unique([tenantId, agentId, date])
+  @@map("analytics_snapshots")
+}
+
+model UsageRecord {
+  id       String @id @default(cuid())
+  tenantId String
+  agentId  String?
+  month    String
+  messages Int    @default(0)
+  tokens   Int    @default(0)
+
+  @@unique([tenantId, agentId, month])
+  @@map("usage_records")
+}

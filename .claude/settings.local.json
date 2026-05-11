@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir \"c:\\\\Users\\\\Lenovo\\\\Desktop\\\\customeragent\\\\app\\\\api\\\\auth\\\\[...nextauth]\" 2>&1; echo \"done\")"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\Lenovo\\Desktop\\customeragent\\app\\api\\auth"
+    ]
+  }
+}

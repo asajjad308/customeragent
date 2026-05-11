@@ -1,20 +1,42 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
-// In a real app this would read from a database.
-// Here we return a default config for any botId.
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ botId: string }> }) {
   const { botId } = await params;
 
-  const config = {
-    botId,
-    name: 'Aria',
-    greeting: "Hi! I'm Aria 👋 What can I help you with today?",
-    systemPrompt:
-      'You are Aria, a warm and efficient customer support assistant. Help users with their questions clearly and concisely. Always be empathetic. If you cannot resolve an issue, offer to connect them with a human agent.',
-    businessContext: 'SaaS company. 14-day free trial. Cancel anytime. Support hours: 24/7 via chat.',
-    tone: 'friendly',
-    color: '#6366F1',
-  };
+  const agent = await prisma.agent.findFirst({
+    where: { id: botId, isActive: true },
+    select: {
+      id: true,
+      name: true,
+      greeting: true,
+      systemPrompt: true,
+      businessContext: true,
+      tone: true,
+      model: true,
+      temperature: true,
+      widgetColor: true,
+      widgetPosition: true,
+      avatarColor: true,
+    },
+  });
 
-  return Response.json(config);
+  if (!agent) {
+    return NextResponse.json({ error: 'Bot not found' }, { status: 404 });
+  }
+
+  return NextResponse.json({
+    botId: agent.id,
+    name: agent.name,
+    greeting: agent.greeting,
+    systemPrompt: agent.businessContext
+      ? `${agent.systemPrompt}\n\nBusiness context: ${agent.businessContext}`
+      : agent.systemPrompt,
+    tone: agent.tone,
+    model: agent.model,
+    temperature: agent.temperature,
+    color: agent.widgetColor,
+    avatarColor: agent.avatarColor,
+    position: agent.widgetPosition,
+  });
 }
