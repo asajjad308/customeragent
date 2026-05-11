@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
-import { Upload, FileText, Trash2, Plus, BookOpen, ChevronDown, ChevronUp, Edit2, Check, X } from 'lucide-react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { Upload, FileText, Trash2, Plus, BookOpen, Edit2, Check, X, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { toast } from 'sonner';
 import { useAppStore } from '@/store';
@@ -17,24 +18,27 @@ function formatBytes(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-function formatDate(ts: number) {
-  return new Date(ts).toLocaleDateString();
-}
-
 export default function KnowledgeBasePage() {
-  const { kbEntries, kbFiles, addKBEntry, updateKBEntry, deleteKBEntry, addKBFile, deleteKBFile } = useAppStore();
+  const { bots, activeBotId, kbEntries, kbFiles, loadKB, addKBEntry, updateKBEntry, deleteKBEntry, addKBFile, deleteKBFile } = useAppStore();
 
+  const [selectedAgentId, setSelectedAgentId] = useState<string>(activeBotId);
+  const [loading, setLoading] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editQ, setEditQ] = useState('');
   const [editA, setEditA] = useState('');
+  const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    setLoading(true);
+    loadKB(selectedAgentId).finally(() => setLoading(false));
+  }, [selectedAgentId]);
+
   const processFile = useCallback(async (file: File) => {
-    const allowedTypes = ['text/plain', 'text/markdown', 'text/csv', 'application/pdf'];
-    if (!allowedTypes.some((t) => file.type.startsWith(t.split('/')[0]) || file.name.endsWith('.md') || file.name.endsWith('.csv') || file.name.endsWith('.txt') || file.name.endsWith('.pdf'))) {
+    if (!file.name.match(/\.(txt|md|csv|pdf)$/i)) {
       toast.error('Only .txt, .md, .csv, and .pdf files are supported');
       return;
     }
@@ -58,12 +62,15 @@ export default function KnowledgeBasePage() {
     if (fileRef.current) fileRef.current.value = '';
   }, [processFile]);
 
-  const handleAddEntry = () => {
+  const handleAddEntry = async () => {
     if (!question.trim() || !answer.trim()) {
       toast.error('Both question and answer are required');
       return;
     }
-    addKBEntry({ question: question.trim(), answer: answer.trim() });
+    setSaving(true);
+    const result = await addKBEntry({ question: question.trim(), answer: answer.trim(), agentId: selectedAgentId });
+    setSaving(false);
+    if (!result) { toast.error('Failed to save entry'); return; }
     setQuestion('');
     setAnswer('');
     toast.success('Entry added');
@@ -75,20 +82,61 @@ export default function KnowledgeBasePage() {
     setEditA(a);
   };
 
-  const saveEdit = (id: string) => {
+  const saveEdit = async (id: string) => {
     if (!editQ.trim() || !editA.trim()) return;
-    updateKBEntry(id, { question: editQ.trim(), answer: editA.trim() });
+    await updateKBEntry(id, { question: editQ.trim(), answer: editA.trim() });
     setEditingId(null);
     toast.success('Entry updated');
   };
 
+  const selectedAgent = bots.find((b) => b.id === selectedAgentId);
+  const agentEntries = kbEntries.filter((e) => e.agentId === selectedAgentId);
+
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-6 max-w-3xl mx-auto w-full">
-      <div className="flex items-center gap-3">
-        <BookOpen className="w-6 h-6 text-indigo-500" />
-        <h1 className="text-2xl font-bold">Knowledge Base</h1>
-        <Badge variant="secondary">{kbEntries.length} entries · {kbFiles.length} files</Badge>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <BookOpen className="w-6 h-6 text-indigo-500" />
+          <h1 className="text-2xl font-bold">Knowledge Base</h1>
+          <Badge variant="secondary">{agentEntries.length} entries · {kbFiles.length} files</Badge>
+        </div>
       </div>
+
+      {/* Agent selector */}
+      <Card>
+        <CardContent className="pt-4 pb-4">
+          <div className="flex items-center gap-3">
+            <Bot className="w-4 h-4 text-muted-foreground shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium mb-1">Knowledge base for agent</p>
+              <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
+                <SelectTrigger className="w-64">
+                  <SelectValue placeholder="Select agent" />
+                </SelectTrigger>
+                <SelectContent>
+                  {bots.map((bot) => (
+                    <SelectItem key={bot.id} value={bot.id}>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: bot.color }}
+                        />
+                        {bot.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {selectedAgent && (
+              <p className="text-xs text-muted-foreground">
+                Entries here are injected into <strong>{selectedAgent.name}</strong>'s context automatically.
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* File Upload */}
       <Card>
@@ -105,7 +153,6 @@ export default function KnowledgeBasePage() {
             onDrop={handleDrop}
             onClick={() => fileRef.current?.click()}
             role="button"
-            aria-label="Upload files"
             tabIndex={0}
             onKeyDown={(e) => e.key === 'Enter' && fileRef.current?.click()}
           >
@@ -122,13 +169,12 @@ export default function KnowledgeBasePage() {
                   <FileText className="w-4 h-4 text-indigo-500 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">{file.name}</div>
-                    <div className="text-xs text-muted-foreground">{formatBytes(file.size)} · {formatDate(file.uploadedAt)}</div>
+                    <div className="text-xs text-muted-foreground">{formatBytes(file.size)}</div>
                   </div>
                   <Button
                     variant="ghost"
-                    size="icon-sm"
+                    size="icon"
                     onClick={() => { deleteKBFile(file.id); toast.success('File removed'); }}
-                    aria-label={`Delete ${file.name}`}
                   >
                     <Trash2 className="w-3.5 h-3.5 text-destructive" />
                   </Button>
@@ -142,7 +188,7 @@ export default function KnowledgeBasePage() {
       {/* Q&A Manual Entry */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Add Q&A Entry</CardTitle>
+          <CardTitle className="text-base">Add Q&amp;A Entry</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div>
@@ -151,7 +197,6 @@ export default function KnowledgeBasePage() {
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               placeholder="e.g. How do I reset my password?"
-              aria-label="Question"
             />
           </div>
           <div>
@@ -161,25 +206,26 @@ export default function KnowledgeBasePage() {
               onChange={(e) => setAnswer(e.target.value)}
               placeholder="e.g. Go to Settings → Security → Reset Password..."
               rows={3}
-              aria-label="Answer"
             />
           </div>
-          <Button onClick={handleAddEntry} aria-label="Add Q&A entry">
+          <Button onClick={handleAddEntry} disabled={saving}>
             <Plus className="w-4 h-4 mr-2" />
-            Add Entry
+            {saving ? 'Saving…' : 'Add Entry'}
           </Button>
         </CardContent>
       </Card>
 
       {/* Q&A List */}
-      {kbEntries.length > 0 && (
+      {loading ? (
+        <div className="text-center py-8 text-muted-foreground text-sm">Loading entries…</div>
+      ) : agentEntries.length > 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Q&A Entries ({kbEntries.length})</CardTitle>
+            <CardTitle className="text-base">Q&amp;A Entries ({agentEntries.length})</CardTitle>
           </CardHeader>
           <CardContent>
             <Accordion type="multiple" className="space-y-2">
-              {kbEntries.map((entry) => (
+              {agentEntries.map((entry) => (
                 <AccordionItem key={entry.id} value={entry.id} className="border rounded-lg px-3">
                   <AccordionTrigger className="text-sm hover:no-underline py-3">
                     {editingId === entry.id ? (
@@ -188,7 +234,6 @@ export default function KnowledgeBasePage() {
                         onChange={(e) => setEditQ(e.target.value)}
                         onClick={(e) => e.stopPropagation()}
                         className="text-sm h-7"
-                        aria-label="Edit question"
                       />
                     ) : (
                       <span className="text-left flex-1 pr-4">{entry.question}</span>
@@ -202,13 +247,12 @@ export default function KnowledgeBasePage() {
                           onChange={(e) => setEditA(e.target.value)}
                           rows={3}
                           className="text-sm"
-                          aria-label="Edit answer"
                         />
                         <div className="flex gap-2">
-                          <Button size="sm" onClick={() => saveEdit(entry.id)} aria-label="Save entry">
+                          <Button size="sm" onClick={() => saveEdit(entry.id)}>
                             <Check className="w-3.5 h-3.5 mr-1" /> Save
                           </Button>
-                          <Button size="sm" variant="ghost" onClick={() => setEditingId(null)} aria-label="Cancel edit">
+                          <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>
                             <X className="w-3.5 h-3.5 mr-1" /> Cancel
                           </Button>
                         </div>
@@ -217,10 +261,10 @@ export default function KnowledgeBasePage() {
                       <div className="space-y-2">
                         <p className="text-sm text-muted-foreground">{entry.answer}</p>
                         <div className="flex gap-2">
-                          <Button size="sm" variant="outline" onClick={() => startEdit(entry.id, entry.question, entry.answer)} aria-label="Edit entry">
+                          <Button size="sm" variant="outline" onClick={() => startEdit(entry.id, entry.question, entry.answer)}>
                             <Edit2 className="w-3.5 h-3.5 mr-1" /> Edit
                           </Button>
-                          <Button size="sm" variant="ghost" onClick={() => { deleteKBEntry(entry.id); toast.success('Entry deleted'); }} aria-label="Delete entry">
+                          <Button size="sm" variant="ghost" onClick={async () => { await deleteKBEntry(entry.id); toast.success('Entry deleted'); }}>
                             <Trash2 className="w-3.5 h-3.5 mr-1 text-destructive" /> Delete
                           </Button>
                         </div>
@@ -232,6 +276,10 @@ export default function KnowledgeBasePage() {
             </Accordion>
           </CardContent>
         </Card>
+      ) : (
+        <div className="text-center py-8 text-muted-foreground text-sm">
+          No Q&amp;A entries for <strong>{selectedAgent?.name}</strong> yet. Add one above.
+        </div>
       )}
     </div>
   );

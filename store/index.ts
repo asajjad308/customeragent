@@ -42,6 +42,7 @@ export interface Conversation {
 
 export interface KBEntry {
   id: string;
+  agentId?: string | null;
   question: string;
   answer: string;
   createdAt: number;
@@ -182,10 +183,11 @@ export interface AppState {
   trackFeedback: (messageId: string, type: 'up' | 'down', preview: string) => void;
   trackResolved: () => void;
 
-  // ─── KB actions (local)
-  addKBEntry: (entry: Omit<KBEntry, 'id' | 'createdAt'>) => void;
-  updateKBEntry: (id: string, updates: Partial<Pick<KBEntry, 'question' | 'answer'>>) => void;
-  deleteKBEntry: (id: string) => void;
+  // ─── KB actions
+  loadKB: (agentId?: string | null) => Promise<void>;
+  addKBEntry: (entry: Omit<KBEntry, 'id' | 'createdAt'>) => Promise<KBEntry | null>;
+  updateKBEntry: (id: string, updates: Partial<Pick<KBEntry, 'question' | 'answer'>>) => Promise<void>;
+  deleteKBEntry: (id: string) => Promise<void>;
   addKBFile: (file: Omit<KBFile, 'id' | 'uploadedAt'>) => void;
   deleteKBFile: (id: string) => void;
   searchKB: (query: string) => string | null;
@@ -541,19 +543,53 @@ export const useAppStore = create<AppState>()(
       trackResolved: () =>
         set((s) => ({ analytics: { ...s.analytics, resolvedChats: s.analytics.resolvedChats + 1 } })),
 
-      // ─── KB actions (local)
-      addKBEntry: (entry) =>
-        set((s) => ({ kbEntries: [...s.kbEntries, { ...entry, id: uuid(), createdAt: Date.now() }] })),
-      updateKBEntry: (id, updates) =>
-        set((s) => ({ kbEntries: s.kbEntries.map((e) => (e.id === id ? { ...e, ...updates } : e)) })),
-      deleteKBEntry: (id) => set((s) => ({ kbEntries: s.kbEntries.filter((e) => e.id !== id) })),
+      // ─── KB actions
+      loadKB: async (agentId) => {
+        const url = agentId ? `/api/kb?agentId=${encodeURIComponent(agentId)}` : '/api/kb';
+        const res = await fetch(url);
+        if (!res.ok) return;
+        const data = await res.json();
+        const entries: KBEntry[] = (data as any[]).map((d) => ({
+          id: d.id,
+          agentId: d.agentId,
+          question: d.title,
+          answer: d.content ?? '',
+          createdAt: new Date(d.createdAt).getTime(),
+        }));
+        set({ kbEntries: entries });
+      },
+      addKBEntry: async (entry) => {
+        const res = await fetch('/api/kb', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'qa', title: entry.question, content: entry.answer, agentId: entry.agentId }),
+        });
+        if (!res.ok) return null;
+        const d = await res.json();
+        const newEntry: KBEntry = { id: d.id, agentId: d.agentId, question: d.title, answer: d.content ?? '', createdAt: new Date(d.createdAt).getTime() };
+        set((s) => ({ kbEntries: [newEntry, ...s.kbEntries] }));
+        return newEntry;
+      },
+      updateKBEntry: async (id, updates) => {
+        await fetch(`/api/kb/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...(updates.question !== undefined ? { title: updates.question } : {}), ...(updates.answer !== undefined ? { content: updates.answer } : {}) }),
+        });
+        set((s) => ({ kbEntries: s.kbEntries.map((e) => (e.id === id ? { ...e, ...updates } : e)) }));
+      },
+      deleteKBEntry: async (id) => {
+        await fetch(`/api/kb/${id}`, { method: 'DELETE' });
+        set((s) => ({ kbEntries: s.kbEntries.filter((e) => e.id !== id) }));
+      },
       addKBFile: (file) =>
         set((s) => ({ kbFiles: [...s.kbFiles, { ...file, id: uuid(), uploadedAt: Date.now() }] })),
       deleteKBFile: (id) => set((s) => ({ kbFiles: s.kbFiles.filter((f) => f.id !== id) })),
       searchKB: (query) => {
-        const { kbEntries, kbFiles } = get();
+        const { kbEntries, kbFiles, activeBotId } = get();
         const q = query.toLowerCase();
-        const entry = kbEntries.find(
+        const relevant = kbEntries.filter((e) => !e.agentId || e.agentId === activeBotId);
+        const entry = relevant.find(
           (e) => q.includes(e.question.toLowerCase()) || e.question.toLowerCase().split(' ').some((w) => w.length > 3 && q.includes(w))
         );
         if (entry) return entry.answer;

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Plus, MessageSquare, Trash2, Edit2, Check, Copy, Bot, Code2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, MessageSquare, Trash2, Edit2, Check, Copy, Bot, Code2, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,6 +57,7 @@ function AgentFormDialog({
   title,
   onSubmit,
   loading,
+  agentId,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -63,14 +65,42 @@ function AgentFormDialog({
   title: string;
   onSubmit: (data: AgentFormData) => void;
   loading: boolean;
+  agentId?: string;
 }) {
+  const { kbEntries, loadKB, addKBEntry, deleteKBEntry } = useAppStore();
   const [form, setForm] = useState<AgentFormData>(initial);
   const set = (k: keyof AgentFormData, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
-  // Reset form when dialog opens with new initial data
+  const [kbQ, setKbQ] = useState('');
+  const [kbA, setKbA] = useState('');
+  const [kbSaving, setKbSaving] = useState(false);
+
   const handleOpenChange = (v: boolean) => {
-    if (v) setForm(initial);
+    if (v) {
+      setForm(initial);
+      setKbQ('');
+      setKbA('');
+    }
     onOpenChange(v);
+  };
+
+  useEffect(() => {
+    if (open && agentId) {
+      loadKB(agentId);
+    }
+  }, [open, agentId]);
+
+  const agentKBEntries = kbEntries.filter((e) => e.agentId === agentId);
+
+  const handleAddKB = async () => {
+    if (!kbQ.trim() || !kbA.trim()) { toast.error('Both question and answer are required'); return; }
+    setKbSaving(true);
+    const result = await addKBEntry({ question: kbQ.trim(), answer: kbA.trim(), agentId });
+    setKbSaving(false);
+    if (!result) { toast.error('Failed to save entry'); return; }
+    setKbQ('');
+    setKbA('');
+    toast.success('Entry added');
   };
 
   return (
@@ -79,7 +109,7 @@ function AgentFormDialog({
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+        <div className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
           <div className="grid gap-1.5">
             <Label>Agent Name *</Label>
             <Input value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="e.g. Aria, Max, Support Bot" />
@@ -136,6 +166,72 @@ function AgentFormDialog({
               placeholder="Products, policies, FAQs your agent should know..."
             />
           </div>
+
+          {/* KB section — only in edit mode */}
+          {agentId && (
+            <>
+              <Separator />
+              <div className="grid gap-3">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-indigo-500" />
+                  <Label className="text-sm font-semibold">Knowledge Base</Label>
+                  {agentKBEntries.length > 0 && (
+                    <Badge variant="secondary" className="text-xs h-4 py-0">{agentKBEntries.length}</Badge>
+                  )}
+                </div>
+
+                {/* Existing entries */}
+                {agentKBEntries.length > 0 && (
+                  <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                    {agentKBEntries.map((entry) => (
+                      <div key={entry.id} className="flex items-start gap-2 bg-muted/50 rounded-lg px-3 py-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium truncate">{entry.question}</p>
+                          <p className="text-xs text-muted-foreground line-clamp-1">{entry.answer}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={async () => { await deleteKBEntry(entry.id); toast.success('Entry removed'); }}
+                          className="shrink-0 text-muted-foreground hover:text-destructive transition-colors mt-0.5"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add new entry */}
+                <div className="space-y-2 border rounded-lg p-3 bg-muted/20">
+                  <p className="text-xs text-muted-foreground font-medium">Add Q&amp;A entry</p>
+                  <Input
+                    value={kbQ}
+                    onChange={(e) => setKbQ(e.target.value)}
+                    placeholder="Question"
+                    className="text-sm h-8"
+                  />
+                  <Textarea
+                    value={kbA}
+                    onChange={(e) => setKbA(e.target.value)}
+                    placeholder="Answer"
+                    rows={2}
+                    className="text-sm resize-none"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={handleAddKB}
+                    disabled={kbSaving || !kbQ.trim() || !kbA.trim()}
+                    className="w-full gap-1.5"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    {kbSaving ? 'Saving…' : 'Add Entry'}
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="flex gap-2 pt-2">
@@ -428,6 +524,7 @@ export function AgentsPage({ onSwitchToChat }: { onSwitchToChat?: () => void }) 
         title={`Edit "${editBot?.name}"`}
         onSubmit={handleEdit}
         loading={saving}
+        agentId={editBot?.id}
       />
 
       {/* Embed code dialog */}
