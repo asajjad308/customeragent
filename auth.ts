@@ -13,35 +13,49 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Credentials({
       async authorize(credentials) {
-        const parsed = loginSchema.safeParse(credentials);
-        if (!parsed.success) return null;
+        try {
+          console.log('[auth] authorize called, credentials keys:', Object.keys(credentials ?? {}));
+          const parsed = loginSchema.safeParse(credentials);
+          if (!parsed.success) {
+            console.log('[auth] zod parse failed:', parsed.error.issues);
+            return null;
+          }
 
-        const { email, password } = parsed.data;
+          const { email, password } = parsed.data;
+          console.log('[auth] looking up email:', email);
 
-        const user = await prisma.user.findFirst({
-          where: { email },
-          include: { tenant: { select: { id: true, slug: true, plan: true } } },
-        });
+          const user = await prisma.user.findFirst({
+            where: { email },
+            include: { tenant: { select: { id: true, slug: true, plan: true } } },
+          });
 
-        if (!user) return null;
+          if (!user) {
+            console.log('[auth] user not found');
+            return null;
+          }
 
-        const valid = await bcrypt.compare(password, user.password);
-        if (!valid) return null;
+          const valid = await bcrypt.compare(password, user.password);
+          console.log('[auth] password valid:', valid);
+          if (!valid) return null;
 
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { lastLoginAt: new Date() },
-        });
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { lastLoginAt: new Date() },
+          });
 
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          tenantId: user.tenantId,
-          tenantSlug: user.tenant.slug,
-          role: user.role,
-          plan: user.tenant.plan,
-        };
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            tenantId: user.tenantId,
+            tenantSlug: user.tenant.slug,
+            role: user.role,
+            plan: user.tenant.plan,
+          };
+        } catch (err) {
+          console.error('[auth] authorize error:', err);
+          return null;
+        }
       },
     }),
   ],

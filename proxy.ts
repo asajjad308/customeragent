@@ -2,7 +2,7 @@ import { auth } from '@/auth';
 import { NextResponse } from 'next/server';
 
 const PUBLIC_PATHS = ['/login', '/register', '/embed.js', '/widget'];
-const API_PUBLIC = ['/api/bot-config', '/api/chat', '/api/feedback'];
+const API_PUBLIC = ['/api/auth', '/api/bot-config', '/api/chat', '/api/feedback', '/api/register'];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
