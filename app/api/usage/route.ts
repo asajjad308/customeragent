@@ -15,8 +15,8 @@ export async function GET(req: NextRequest) {
     where: { tenantId, month },
   });
 
-  const totalMessages = records.reduce((sum, r) => sum + r.messages, 0);
-  const totalTokens = records.reduce((sum, r) => sum + r.tokens, 0);
+  const totalMessages = records.reduce((sum: number, r) => sum + r.messages, 0);
+  const totalTokens = records.reduce((sum: number, r) => sum + r.tokens, 0);
   const limits = getPlanLimits(plan);
 
   return NextResponse.json({
