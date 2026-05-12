@@ -5,7 +5,9 @@
       "Bash(npm run *)",
       "Bash(npx prisma *)",
       "Bash(npm remove *)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(npx tsx *)",
+      "Bash(Remove-Item -Recurse -Force .next)"
     ],
     "additionalDirectories": [
       "c:\\Users\\Lenovo\\Desktop\\customeragent\\app\\api\\auth"
