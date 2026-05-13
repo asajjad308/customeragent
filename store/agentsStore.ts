@@ -148,11 +148,11 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
         }),
       });
       const json = await res.json();
-      if (!res.ok) return null;
+      if (!res.ok) throw new Error((json as { error?: string }).error ?? 'Failed to create agent');
       set((s) => ({ agents: [...s.agents, json as Agent] }));
       return json as Agent;
-    } catch {
-      return null;
+    } catch (err) {
+      throw err instanceof Error ? err : new Error('Failed to create agent');
     }
   },
 

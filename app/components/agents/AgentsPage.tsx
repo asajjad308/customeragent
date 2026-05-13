@@ -107,8 +107,8 @@ export function AgentsPage({ onSwitchToChat }: AgentsPageProps) {
       await createAgent(data);
       setModalOpen(false);
       toast.success('Agent created successfully');
-    } catch {
-      toast.error('Failed to create agent');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to create agent');
     } finally {
       setModalLoading(false);
     }
