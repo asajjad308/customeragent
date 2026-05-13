@@ -170,6 +170,16 @@
       '#sai-send:disabled{opacity:.4;cursor:not-allowed;}',
       '#sai-branding{text-align:center;font-size:10px;color:' + t.subText + ';margin-top:6px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}',
       '#sai-branding a{color:inherit;text-decoration:none;}',
+      '.sai-slots{background:' + t.botBubble + ';border:' + t.botBorder + ';border-radius:12px;padding:10px;margin:0;align-self:flex-start;max-width:90%;}',
+      '.sai-slots-title{font-size:11px;font-weight:600;color:' + t.headerText + ';margin-bottom:8px;font-family:-apple-system,sans-serif;display:flex;align-items:center;gap:4px;}',
+      '.sai-slots-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}',
+      '.sai-slot-btn{padding:6px 10px;background:' + t.bg + ';border:' + t.inputBorder + ';border-radius:8px;font-size:11px;font-weight:500;color:' + t.botText + ';cursor:pointer;font-family:-apple-system,sans-serif;text-align:left;display:flex;align-items:center;gap:4px;transition:border-color .15s;}',
+      '.sai-slot-btn:hover{border-color:' + t.inputFocusBorder + ';}',
+      '.sai-confirmed{background:#dcfce7;border:1px solid #86efac;border-radius:12px;padding:10px;align-self:flex-start;max-width:90%;}',
+      '.sai-confirmed-title{font-size:11px;font-weight:600;color:#16a34a;margin-bottom:4px;font-family:-apple-system,sans-serif;display:flex;align-items:center;gap:4px;}',
+      '.sai-confirmed-summary{font-size:11px;font-weight:500;color:#166534;font-family:-apple-system,sans-serif;margin-bottom:2px;}',
+      '.sai-confirmed-time{font-size:10px;color:#4b7c59;font-family:-apple-system,sans-serif;margin-bottom:6px;}',
+      '.sai-confirmed-link{font-size:10px;color:#16a34a;text-decoration:underline;font-family:-apple-system,sans-serif;}',
       '@media(max-width:420px){#sai-panel{width:calc(100vw - 24px);' + pos.side + ':12px;}}',
     ].join('');
 
@@ -324,6 +334,103 @@
     });
   }
 
+  // ── Booking UI helpers ────────────────────────────────────────────────────
+  function formatDateLabel(dateStr) {
+    try {
+      var d = new Date(dateStr + 'T00:00:00');
+      return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    } catch (e) { return dateStr; }
+  }
+
+  function formatDateTimeLabel(iso) {
+    if (!iso) return '';
+    try {
+      return new Date(iso).toLocaleString('en-US', {
+        weekday: 'short', month: 'short', day: 'numeric',
+        hour: 'numeric', minute: '2-digit', hour12: true,
+      });
+    } catch (e) { return iso; }
+  }
+
+  function renderBookingSlots(date, slots) {
+    if (typingEl.parentNode === messagesEl) messagesEl.removeChild(typingEl);
+
+    var wrap = document.createElement('div');
+    wrap.className = 'sai-slots';
+
+    var title = document.createElement('div');
+    title.className = 'sai-slots-title';
+    title.innerHTML = '&#128197; Available on ' + escHtml(formatDateLabel(date));
+    wrap.appendChild(title);
+
+    var grid = document.createElement('div');
+    grid.className = 'sai-slots-grid';
+
+    if (!slots || slots.length === 0) {
+      grid.style.display = 'block';
+      grid.style.fontSize = '11px';
+      grid.style.color = '#71717a';
+      grid.textContent = 'No available slots on this date.';
+    } else {
+      slots.forEach(function (slot) {
+        var btn = document.createElement('button');
+        btn.className = 'sai-slot-btn';
+        btn.innerHTML = '&#128336; ' + escHtml(slot.label);
+        btn.addEventListener('click', function () {
+          // Remove the slot picker and send as a message
+          if (wrap.parentNode) wrap.parentNode.removeChild(wrap);
+          inputEl.value = "I'd like the " + slot.label + ' slot';
+          sendMessage();
+        });
+        grid.appendChild(btn);
+      });
+    }
+    wrap.appendChild(grid);
+    messagesEl.appendChild(wrap);
+    messagesEl.appendChild(typingEl);
+    scrollBottom();
+  }
+
+  function renderBookingConfirmed(event) {
+    if (typingEl.parentNode === messagesEl) messagesEl.removeChild(typingEl);
+
+    var wrap = document.createElement('div');
+    wrap.className = 'sai-confirmed';
+
+    var title = document.createElement('div');
+    title.className = 'sai-confirmed-title';
+    title.innerHTML = '&#10003; Appointment Confirmed';
+    wrap.appendChild(title);
+
+    if (event.summary) {
+      var summary = document.createElement('div');
+      summary.className = 'sai-confirmed-summary';
+      summary.textContent = event.summary;
+      wrap.appendChild(summary);
+    }
+
+    if (event.start) {
+      var timeEl = document.createElement('div');
+      timeEl.className = 'sai-confirmed-time';
+      timeEl.textContent = formatDateTimeLabel(event.start);
+      wrap.appendChild(timeEl);
+    }
+
+    if (event.htmlLink) {
+      var link = document.createElement('a');
+      link.className = 'sai-confirmed-link';
+      link.href = event.htmlLink;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.textContent = 'Open in Google Calendar →';
+      wrap.appendChild(link);
+    }
+
+    messagesEl.appendChild(wrap);
+    messagesEl.appendChild(typingEl);
+    scrollBottom();
+  }
+
   // ── Send + stream ─────────────────────────────────────────────────────────
   function sendMessage() {
     var text = (inputEl.value || '').trim();
@@ -379,7 +486,6 @@
             try {
               var parsed = JSON.parse(payload);
               if (parsed.type === 'handoff') {
-                // Show handoff notice
                 var notice = document.createElement('div');
                 notice.style.cssText = 'font-size:11px;text-align:center;color:#71717a;padding:6px 12px;background:rgba(37,99,235,0.06);border-radius:8px;margin:4px 0;font-family:-apple-system,sans-serif;';
                 notice.textContent = '↪ Transferring to ' + (parsed.toAgentName || 'another agent') + '…';
@@ -390,6 +496,12 @@
                   messagesEl.appendChild(typingEl);
                 }
                 scrollBottom();
+              } else if (parsed.type === 'booking_slots') {
+                renderBookingSlots(parsed.date, parsed.slots);
+              } else if (parsed.type === 'booking_confirmed') {
+                renderBookingConfirmed(parsed.event);
+              } else if (parsed.type === 'booking_error') {
+                appendMessage('bot', parsed.message || 'Booking error. Please try again.');
               } else if (parsed.content) {
                 fullContent += parsed.content;
                 bubble.textContent = fullContent;

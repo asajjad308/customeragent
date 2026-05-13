@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, X, ArrowRightLeft, RotateCcw } from 'lucide-react';
+import { Send, X, ArrowRightLeft, RotateCcw, Calendar, CheckCircle2, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ds/Button';
 import { Spinner } from '@/components/ds/Spinner';
@@ -19,9 +19,41 @@ interface HandoffEvent {
   reason: string;
 }
 
+interface TimeSlot {
+  start: string;
+  end: string;
+  label: string;
+}
+
+interface BookingSlotsEvent {
+  date: string;
+  slots: TimeSlot[];
+}
+
+interface BookingConfirmedEvent {
+  id: string | null | undefined;
+  htmlLink: string | null | undefined;
+  summary: string | null | undefined;
+  start: string | null | undefined;
+  end: string | null | undefined;
+}
+
 interface AgentChatPreviewProps {
   agent: Agent;
   onClose: () => void;
+}
+
+function formatDate(dateStr: string) {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+}
+
+function formatDateTime(iso: string | null | undefined) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric',
+    hour: 'numeric', minute: '2-digit', hour12: true,
+  });
 }
 
 export function AgentChatPreview({ agent, onClose }: AgentChatPreviewProps) {
@@ -31,12 +63,14 @@ export function AgentChatPreview({ agent, onClose }: AgentChatPreviewProps) {
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [handoff, setHandoff] = useState<HandoffEvent | null>(null);
+  const [bookingSlots, setBookingSlots] = useState<BookingSlotsEvent | null>(null);
+  const [bookingConfirmed, setBookingConfirmed] = useState<BookingConfirmedEvent | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, bookingSlots, bookingConfirmed]);
 
   const resetChat = useCallback(() => {
     abortRef.current?.abort();
@@ -44,18 +78,18 @@ export function AgentChatPreview({ agent, onClose }: AgentChatPreviewProps) {
     setInput('');
     setIsStreaming(false);
     setHandoff(null);
+    setBookingSlots(null);
+    setBookingConfirmed(null);
   }, [agent.greeting]);
 
-  const handleSend = useCallback(async () => {
-    const text = input.trim();
-    if (!text || isStreaming) return;
-    setInput('');
-
-    const history = messages.slice(1); // exclude initial greeting
+  const sendMessage = useCallback(async (text: string, currentMessages: ChatMessage[]) => {
+    const history = currentMessages.slice(1);
     const userMsg: ChatMessage = { role: 'user', content: text };
-    setMessages((prev) => [...prev, userMsg, { role: 'assistant', content: '' }]);
+    const newMessages = [...currentMessages, userMsg, { role: 'assistant', content: '' }];
+    setMessages(newMessages);
     setIsStreaming(true);
     setHandoff(null);
+    setBookingSlots(null);
 
     const ctrl = new AbortController();
     abortRef.current = ctrl;
@@ -88,6 +122,15 @@ export function AgentChatPreview({ agent, onClose }: AgentChatPreviewProps) {
             const parsed = JSON.parse(payload);
             if (parsed.type === 'handoff') {
               setHandoff({ toAgentName: parsed.toAgentName, reason: parsed.reason });
+            } else if (parsed.type === 'booking_slots') {
+              setBookingSlots({ date: parsed.date, slots: parsed.slots });
+            } else if (parsed.type === 'booking_confirmed') {
+              setBookingConfirmed(parsed.event);
+            } else if (parsed.type === 'booking_error') {
+              setMessages((prev) => [
+                ...prev,
+                { role: 'assistant', content: parsed.message ?? 'Booking error. Please try again.' },
+              ]);
             } else if (parsed.content) {
               setMessages((prev) => {
                 const next = [...prev];
@@ -115,7 +158,20 @@ export function AgentChatPreview({ agent, onClose }: AgentChatPreviewProps) {
     } finally {
       setIsStreaming(false);
     }
-  }, [input, isStreaming, messages, agent.id]);
+  }, [agent.id]);
+
+  const handleSend = useCallback(async () => {
+    const text = input.trim();
+    if (!text || isStreaming) return;
+    setInput('');
+    await sendMessage(text, messages);
+  }, [input, isStreaming, messages, sendMessage]);
+
+  const handleSlotPick = useCallback((slot: TimeSlot) => {
+    setBookingSlots(null);
+    const text = `I'd like the ${slot.label} slot`;
+    sendMessage(text, messages);
+  }, [messages, sendMessage]);
 
   return (
     <motion.div
@@ -198,11 +254,78 @@ export function AgentChatPreview({ agent, onClose }: AgentChatPreviewProps) {
           )}
         </AnimatePresence>
 
+        {/* Booking slots picker */}
+        <AnimatePresence>
+          {bookingSlots && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              className="p-3 rounded-xl bg-[var(--color-bg-subtle)] border border-[var(--color-border-default)]"
+            >
+              <div className="flex items-center gap-1.5 mb-2.5">
+                <Calendar size={12} className="text-[var(--color-accent)]" />
+                <span className="text-[11px] font-semibold text-[var(--color-text-primary)]">
+                  Available on {formatDate(bookingSlots.date)}
+                </span>
+              </div>
+              {bookingSlots.slots.length === 0 ? (
+                <p className="text-[11px] text-[var(--color-text-tertiary)]">No available slots on this date.</p>
+              ) : (
+                <div className="grid grid-cols-2 gap-1.5">
+                  {bookingSlots.slots.map((slot) => (
+                    <button
+                      key={slot.start}
+                      onClick={() => handleSlotPick(slot)}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[var(--color-border-default)] bg-[var(--surface-0)] hover:border-[var(--color-accent)] hover:bg-[var(--color-accent-subtle)] transition-colors text-left"
+                    >
+                      <Clock size={10} className="text-[var(--color-accent)] flex-shrink-0" />
+                      <span className="text-[11px] font-medium text-[var(--color-text-primary)]">{slot.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Booking confirmed card */}
+        <AnimatePresence>
+          {bookingConfirmed && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="p-3 rounded-xl bg-[#DCFCE7] dark:bg-[#14532D]/30 border border-[#86EFAC] dark:border-[#16A34A]/40"
+            >
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <CheckCircle2 size={13} className="text-[#16A34A]" />
+                <span className="text-[11px] font-semibold text-[#16A34A]">Appointment Confirmed</span>
+              </div>
+              <div className="text-[11px] font-medium text-[var(--color-text-primary)] mb-0.5">
+                {bookingConfirmed.summary}
+              </div>
+              <div className="text-[10px] text-[var(--color-text-secondary)]">
+                {formatDateTime(bookingConfirmed.start)}
+              </div>
+              {bookingConfirmed.htmlLink && (
+                <a
+                  href={bookingConfirmed.htmlLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block mt-2 text-[10px] font-medium text-[#16A34A] underline underline-offset-2"
+                >
+                  Open in Google Calendar →
+                </a>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <div ref={bottomRef} />
       </div>
 
       {/* Quick replies */}
-      {agent.quickReplies && agent.quickReplies.length > 0 && !isStreaming && (
+      {agent.quickReplies && agent.quickReplies.length > 0 && !isStreaming && !bookingSlots && (
         <div className="px-4 pb-2 flex gap-1.5 flex-wrap">
           {agent.quickReplies.slice(0, 4).map((qr) => (
             <button
