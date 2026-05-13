@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { X, Edit2, Code2, MessageSquare, Link2, Cpu, Activity } from 'lucide-react';
+import { X, Edit2, Code2, MessageSquare, Link2, Cpu, Activity, Calendar, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ds/Button';
 import { Badge } from '@/components/ds/Badge';
 import { Tabs } from '@/components/ds/Tabs';
@@ -11,6 +11,74 @@ import { AgentEmbedCode } from './AgentEmbedCode';
 import { slideInRight } from '@/lib/animations';
 import { agentTypeColors, agentStatusColors, DETAIL_WIDTH } from '@/lib/design-system';
 import type { Agent, AgentStatus } from '@/store/agentsStore';
+
+function GoogleCalendarSection() {
+  const [status, setStatus] = useState<'loading' | 'connected' | 'disconnected'>('loading');
+  const [connectedAt, setConnectedAt] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/integrations/google-calendar/status')
+      .then((r) => r.json())
+      .then((d) => {
+        setStatus(d.connected ? 'connected' : 'disconnected');
+        setConnectedAt(d.connectedAt ?? null);
+      })
+      .catch(() => setStatus('disconnected'));
+  }, []);
+
+  async function disconnect() {
+    await fetch('/api/integrations/google-calendar/status', { method: 'DELETE' });
+    setStatus('disconnected');
+    setConnectedAt(null);
+  }
+
+  if (status === 'loading') {
+    return (
+      <div className="h-16 rounded-xl bg-[var(--color-bg-subtle)] animate-pulse" />
+    );
+  }
+
+  if (status === 'connected') {
+    return (
+      <div className="flex items-start gap-3 p-3 rounded-xl bg-[#DCFCE7] dark:bg-[#14532D]/20 border border-[#86EFAC] dark:border-[#16A34A]/40">
+        <CheckCircle2 size={15} className="text-[#16A34A] mt-0.5 flex-shrink-0" />
+        <div className="flex-1 min-w-0">
+          <div className="text-[12px] font-semibold text-[#16A34A]">Google Calendar connected</div>
+          {connectedAt && (
+            <div className="text-[10px] text-[#4B7C59] mt-0.5">
+              Since {new Date(connectedAt).toLocaleDateString()}
+            </div>
+          )}
+        </div>
+        <button
+          onClick={disconnect}
+          className="text-[10px] text-[#16A34A] hover:text-red-600 underline underline-offset-2 flex-shrink-0"
+        >
+          Disconnect
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-3 rounded-xl bg-[var(--color-bg-subtle)] border border-[var(--color-border-default)] space-y-2.5">
+      <div className="flex items-center gap-2">
+        <AlertCircle size={13} className="text-amber-500 flex-shrink-0" />
+        <span className="text-[11px] font-medium text-[var(--color-text-primary)]">
+          Google Calendar not connected
+        </span>
+      </div>
+      <p className="text-[10px] text-[var(--color-text-tertiary)] leading-relaxed">
+        Connect Google Calendar so this agent can check real availability and book appointments automatically.
+      </p>
+      <a href="/api/integrations/google-calendar/auth">
+        <Button variant="primary" size="xs" iconLeft={<Calendar size={11} />} fullWidth>
+          Connect Google Calendar
+        </Button>
+      </a>
+    </div>
+  );
+}
 
 const STATUS_VARIANT: Record<AgentStatus, 'success' | 'warning' | 'default' | 'danger'> = {
   ACTIVE: 'success', PAUSED: 'warning', DRAFT: 'default', ARCHIVED: 'danger',
@@ -136,6 +204,17 @@ export function AgentDetailPanel({ agent, allAgents, onClose, onEdit, onChatPrev
                       <div className="prose-prompt bg-[var(--color-bg-subtle)] rounded-xl p-3 text-[var(--color-text-tertiary)] border border-[var(--color-border-subtle)] max-h-32 overflow-y-auto">
                         {agent.systemPrompt}
                       </div>
+                    </div>
+                  )}
+
+                  {/* Google Calendar section for BOOKING agents */}
+                  {agent.typeId === 'BOOKING' && (
+                    <div>
+                      <p className="text-[11px] font-medium text-[var(--color-text-secondary)] mb-1.5 flex items-center gap-1.5">
+                        <Calendar size={11} />
+                        Calendar Integration
+                      </p>
+                      <GoogleCalendarSection />
                     </div>
                   )}
 

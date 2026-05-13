@@ -43,7 +43,7 @@ export async function exchangeCode(code: string): Promise<GoogleTokens> {
 
 function calendarClient(tokens: GoogleTokens) {
   const auth = getOAuthClient();
-  auth.setCredentials(tokens);
+  auth.setCredentials({ ...tokens, scope: tokens.scope ?? undefined });
   return google.calendar({ version: 'v3', auth });
 }
 

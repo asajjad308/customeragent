@@ -27,24 +27,32 @@ async function getGoogleTokens(tenantId: string): Promise<GoogleTokens | null> {
 function buildBookingSystemPrompt(base: string, hasCalendar: boolean): string {
   const today = new Date().toISOString().slice(0, 10);
   if (!hasCalendar) return base;
-  return `${base}
-
---- CALENDAR TOOL (Google Calendar connected) ---
+  return `=== CALENDAR BOOKING SYSTEM (Google Calendar connected) ===
 Today's date: ${today}
 
-When a user wants to book an appointment:
-1. First collect what type of meeting they want and their preferred date/time.
-2. Check availability by emitting EXACTLY this JSON alone on one line:
-{"booking_action":"check_availability","date":"<YYYY-MM-DD or phrase like tomorrow>","duration":30}
+CRITICAL OVERRIDE: Google Calendar is directly connected. You MUST use the JSON actions below to check real availability and create real calendar events. Do NOT share any booking URL or calendar link — that workflow is disabled when the calendar integration is active.
 
-3. After available slots are shown to the user and they choose one, collect their name and email if not already known.
-4. Then create the event by emitting EXACTLY this JSON alone on one line:
-{"booking_action":"create_event","slot_start":"<ISO>","slot_end":"<ISO>","guest_name":"<name>","guest_email":"<email>","summary":"<brief meeting title>"}
+BOOKING FLOW — follow this exactly:
+1. Ask what type of meeting the user wants.
+2. Ask for their preferred date (e.g. "tomorrow", "next Monday", "May 20").
+3. Emit EXACTLY this JSON on its own line to fetch real available slots:
+{"booking_action":"check_availability","date":"<YYYY-MM-DD or natural phrase>","duration":30}
 
-Rules:
-- Never fabricate slot times. Always check availability first.
-- Only emit the JSON blocks when actually triggering an action.
-- After creating an event, confirm with the user and summarize the booking details.`;
+4. The system will reply with available time slots. Present them to the user and ask which they prefer.
+5. Once the user picks a slot, collect their name and email if not already provided.
+6. Emit EXACTLY this JSON on its own line to create the calendar event:
+{"booking_action":"create_event","slot_start":"<ISO datetime>","slot_end":"<ISO datetime>","guest_name":"<name>","guest_email":"<email>","summary":"<meeting title>"}
+
+7. The system will confirm the booking. Tell the user it's confirmed and summarise the details.
+
+RULES:
+- NEVER share a booking URL or calendar link. Always use the JSON actions instead.
+- NEVER invent time slots — always run check_availability first.
+- Emit the JSON blocks ONLY when triggering an action; do not include them in normal chat.
+- If no slots are available on a date, ask the user to pick another day.
+=== END CALENDAR BOOKING SYSTEM ===
+
+${base}`;
 }
 
 // ── Booking action handler (runs after stream completes) ───────────────────────

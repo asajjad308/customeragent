@@ -85,7 +85,7 @@ export function AgentChatPreview({ agent, onClose }: AgentChatPreviewProps) {
   const sendMessage = useCallback(async (text: string, currentMessages: ChatMessage[]) => {
     const history = currentMessages.slice(1);
     const userMsg: ChatMessage = { role: 'user', content: text };
-    const newMessages = [...currentMessages, userMsg, { role: 'assistant', content: '' }];
+    const newMessages: ChatMessage[] = [...currentMessages, userMsg, { role: 'assistant', content: '' }];
     setMessages(newMessages);
     setIsStreaming(true);
     setHandoff(null);
