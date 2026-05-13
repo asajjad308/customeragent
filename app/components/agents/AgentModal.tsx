@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronRight, ChevronLeft, Check } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Check, Calendar, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ds/Button';
 import { Input } from '@/components/ds/Input';
 import { Select } from '@/components/ds/Select';
@@ -14,30 +14,186 @@ import type { AgentFormData, AgentType } from '@/store/agentsStore';
 const COLOR_OPTIONS = ['#2563EB', '#7C3AED', '#059669', '#D97706', '#DC2626', '#0891B2', '#10B981', '#F97316'];
 
 const TONE_OPTIONS = [
-  { value: 'friendly',      label: 'Friendly' },
-  { value: 'professional',  label: 'Professional' },
-  { value: 'casual',        label: 'Casual' },
-  { value: 'formal',        label: 'Formal' },
+  { value: 'friendly',     label: 'Friendly' },
+  { value: 'professional', label: 'Professional' },
+  { value: 'casual',       label: 'Casual' },
+  { value: 'formal',       label: 'Formal' },
 ];
 
 const THEME_OPTIONS = [
-  { value: 'SOFT_AURORA',         label: 'Soft Aurora' },
-  { value: 'GLASSMORPHISM_DARK',  label: 'Glassmorphism Dark' },
-  { value: 'NEO_BRUTALISM',       label: 'Neo Brutalism' },
+  { value: 'SOFT_AURORA',        label: 'Soft Aurora' },
+  { value: 'GLASSMORPHISM_DARK', label: 'Glassmorphism Dark' },
+  { value: 'NEO_BRUTALISM',      label: 'Neo Brutalism' },
 ];
+
+// ── Per-type defaults ──────────────────────────────────────────────────────────
+const TYPE_DEFAULTS: Record<AgentType, {
+  systemPrompt: string;
+  greeting: string;
+  tone: string;
+  quickReplies: string[];
+  color: string;
+}> = {
+  SUPPORT: {
+    color: '#2563EB',
+    tone: 'friendly',
+    greeting: 'Hi! How can I help you today?',
+    quickReplies: ['Track my order', 'Request a refund', 'Talk to a human'],
+    systemPrompt: `You are a friendly customer support assistant for {{company_name}}.
+
+Your responsibilities:
+- Help customers resolve issues with products or services
+- Answer questions clearly and empathetically
+- Acknowledge frustration and apologize when appropriate
+- Provide step-by-step solutions
+- Escalate to a human agent when you cannot resolve an issue
+
+Always confirm the customer's issue is resolved before ending the conversation.`,
+  },
+
+  TECHNICAL: {
+    color: '#0891B2',
+    tone: 'professional',
+    greeting: 'Hello! I\'m your technical support specialist. What issue can I help you debug today?',
+    quickReplies: ['Getting an error', 'Integration not working', 'API documentation'],
+    systemPrompt: `You are a technical support specialist for {{company_name}}.
+
+Your responsibilities:
+- Help users troubleshoot technical issues and bugs
+- Ask targeted clarifying questions to diagnose problems accurately
+- Provide clear step-by-step debugging instructions
+- Reference relevant documentation when helpful
+- Suggest workarounds while permanent fixes are deployed
+- Escalate to the engineering team for critical bugs
+
+Always ask for: operating system, browser/version, error messages, and steps to reproduce.`,
+  },
+
+  SALES: {
+    color: '#059669',
+    tone: 'friendly',
+    greeting: 'Hi there! I\'m here to help you find the perfect solution. What are you looking to achieve?',
+    quickReplies: ['See pricing', 'Book a demo', 'Compare plans', 'Talk to sales'],
+    systemPrompt: `You are an enthusiastic sales assistant for {{company_name}}.
+
+Your responsibilities:
+- Understand the customer's goals, pain points, and budget
+- Match their needs to the right product or plan
+- Highlight key benefits and ROI with specific examples
+- Handle objections confidently and professionally
+- Create urgency without being pushy
+- Qualify leads and schedule demos or calls when appropriate
+
+Always aim to collect: name, email, company size, and intended use case.`,
+  },
+
+  LEAD_GEN: {
+    color: '#D97706',
+    tone: 'friendly',
+    greeting: 'Hi! I\'d love to learn more about what you\'re looking for. Can I ask you a few quick questions?',
+    quickReplies: ['Get a free quote', 'Learn more', 'Talk to an expert'],
+    systemPrompt: `You are a lead qualification assistant for {{company_name}}.
+
+Your responsibilities:
+- Engage visitors and understand their needs
+- Qualify leads by asking about budget, timeline, team size, and goals
+- Capture contact information: name, email, company, and phone number
+- Identify decision-makers and buying authority
+- Route hot leads to the sales team immediately
+- Nurture cold leads with helpful content
+
+Required information to collect before handoff: name, email, company name, primary use case, and timeline.`,
+  },
+
+  ONBOARDING: {
+    color: '#7C3AED',
+    tone: 'friendly',
+    greeting: 'Welcome to {{company_name}}! 🎉 I\'m here to help you get set up quickly. Where would you like to start?',
+    quickReplies: ['Getting started guide', 'Set up my account', 'Connect integrations', 'Watch a tutorial'],
+    systemPrompt: `You are a friendly onboarding guide for {{company_name}}.
+
+Your responsibilities:
+- Welcome new users warmly and make them feel confident
+- Walk users through key features and setup steps
+- Proactively address common stumbling blocks
+- Celebrate milestones and progress
+- Help users reach their first success moment as quickly as possible
+- Connect users to relevant documentation and tutorials
+
+Focus on: account setup, first key action, and integrations that are most relevant to the user's goal.`,
+  },
+
+  HR: {
+    color: '#DC2626',
+    tone: 'professional',
+    greeting: 'Hello! I\'m the HR assistant for {{company_name}}. How can I help you today?',
+    quickReplies: ['Leave policy', 'Benefits information', 'Payroll question', 'Submit a request'],
+    systemPrompt: `You are a professional HR assistant for {{company_name}}.
+
+Your responsibilities:
+- Answer employee questions about company policies, benefits, and procedures
+- Explain leave policies, payroll processes, and HR workflows
+- Help employees submit requests and find the right HR contact
+- Maintain confidentiality at all times
+- Direct sensitive matters to a human HR representative
+
+Topics you can help with: leave requests, benefits enrollment, payroll questions, onboarding paperwork, and company policies.
+
+Always remind employees that sensitive personal matters should be discussed directly with an HR representative.`,
+  },
+
+  BOOKING: {
+    color: '#0D9488',
+    tone: 'friendly',
+    greeting: 'Hi! I can help you schedule an appointment. What type of meeting are you looking for?',
+    quickReplies: ['Book a meeting', 'Check availability', 'Reschedule', 'Cancel booking'],
+    systemPrompt: `You are a scheduling assistant for {{company_name}}.
+
+Your responsibilities:
+- Help customers book appointments, demos, or consultations
+- Collect required information: name, email, preferred date/time, and meeting type
+- Share the booking link for self-scheduling: {{booking_link}}
+- Confirm booking details before finalizing
+- Handle reschedules and cancellations gracefully
+- Send confirmation details and what to expect
+
+Booking flow:
+1. Ask what type of appointment they need
+2. Collect their contact information
+3. Share the booking link: {{booking_link}}
+4. Confirm they've completed the booking
+5. Provide a summary of next steps`,
+  },
+
+  CUSTOM: {
+    color: '#6B7280',
+    tone: 'professional',
+    greeting: 'Hello! How can I assist you today?',
+    quickReplies: [],
+    systemPrompt: `You are a helpful AI assistant for {{company_name}}.
+
+Your role: [describe your agent's specific purpose here]
+
+Guidelines:
+- Stay focused on your designated scope
+- Be clear, concise, and helpful
+- Ask clarifying questions when needed
+- Escalate to a human when outside your capabilities`,
+  },
+};
 
 const DEFAULT_FORM: AgentFormData = {
   name: '',
   typeId: 'SUPPORT',
-  color: '#2563EB',
-  systemPrompt: 'You are a helpful customer support assistant for {{company_name}}. Assist users clearly and empathetically.',
+  color: TYPE_DEFAULTS.SUPPORT.color,
+  systemPrompt: TYPE_DEFAULTS.SUPPORT.systemPrompt,
   businessContext: '',
-  greeting: 'Hi! How can I help you today?',
-  tone: 'friendly',
+  greeting: TYPE_DEFAULTS.SUPPORT.greeting,
+  tone: TYPE_DEFAULTS.SUPPORT.tone,
   temperature: 0.4,
   maxTokens: 512,
   widgetTheme: 'SOFT_AURORA',
-  quickReplies: [],
+  quickReplies: TYPE_DEFAULTS.SUPPORT.quickReplies,
 };
 
 const STEPS = ['Identity', 'Personality', 'Configuration'];
@@ -52,10 +208,13 @@ interface AgentModalProps {
 }
 
 export function AgentModal({ open, onClose, initial, onSubmit, title = 'Create Agent', loading }: AgentModalProps) {
+  const isEdit = title.startsWith('Edit');
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1);
   const [form, setForm] = useState<AgentFormData>({ ...DEFAULT_FORM, ...initial });
-  const [quickRepliesRaw, setQuickRepliesRaw] = useState((initial?.quickReplies ?? []).join(', '));
+  const [quickRepliesRaw, setQuickRepliesRaw] = useState((initial?.quickReplies ?? DEFAULT_FORM.quickReplies).join(', '));
+  // Booking-specific calendar URL (injected into system prompt)
+  const [calendarUrl, setCalendarUrl] = useState('');
 
   useEffect(() => {
     if (open) {
@@ -63,12 +222,29 @@ export function AgentModal({ open, onClose, initial, onSubmit, title = 'Create A
       setDir(1);
       const merged = { ...DEFAULT_FORM, ...initial };
       setForm(merged);
-      setQuickRepliesRaw((initial?.quickReplies ?? []).join(', '));
+      setQuickRepliesRaw((initial?.quickReplies ?? DEFAULT_FORM.quickReplies).join(', '));
+      setCalendarUrl('');
     }
   }, [open]);
 
   function set<K extends keyof AgentFormData>(key: K, value: AgentFormData[K]) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  // When type changes (only in create mode), fill defaults for that type
+  function handleTypeChange(type: AgentType) {
+    if (isEdit) { set('typeId', type); return; }
+    const defaults = TYPE_DEFAULTS[type];
+    setForm((f) => ({
+      ...f,
+      typeId: type,
+      color: defaults.color,
+      systemPrompt: defaults.systemPrompt,
+      greeting: defaults.greeting,
+      tone: defaults.tone,
+      quickReplies: defaults.quickReplies,
+    }));
+    setQuickRepliesRaw(defaults.quickReplies.join(', '));
   }
 
   function nav(delta: number) {
@@ -78,7 +254,12 @@ export function AgentModal({ open, onClose, initial, onSubmit, title = 'Create A
 
   async function handleSubmit() {
     const quickReplies = quickRepliesRaw.split(',').map((s) => s.trim()).filter(Boolean);
-    await onSubmit({ ...form, quickReplies });
+    // Inject calendar URL into system prompt for booking agents
+    let finalPrompt = form.systemPrompt;
+    if (form.typeId === 'BOOKING' && calendarUrl.trim()) {
+      finalPrompt = finalPrompt.replace(/\{\{booking_link\}\}/g, calendarUrl.trim());
+    }
+    await onSubmit({ ...form, systemPrompt: finalPrompt, quickReplies });
   }
 
   function handleKey(e: React.KeyboardEvent) {
@@ -154,7 +335,7 @@ export function AgentModal({ open, onClose, initial, onSubmit, title = 'Create A
             </div>
 
             {/* Step content */}
-            <div className="relative flex-1 overflow-hidden" style={{ minHeight: 320 }}>
+            <div className="relative flex-1 overflow-hidden" style={{ minHeight: 340 }}>
               <AnimatePresence custom={dir} initial={false} mode="wait">
                 <motion.div
                   key={step}
@@ -166,18 +347,27 @@ export function AgentModal({ open, onClose, initial, onSubmit, title = 'Create A
                   className="absolute inset-0 overflow-y-auto"
                 >
                   <div className="px-6 py-5 space-y-4">
+
+                    {/* ── Step 1: Identity ── */}
                     {step === 0 && (
                       <>
                         <Input
                           label="Agent Name *"
-                          placeholder="e.g. Aria, Max, Support Bot"
+                          placeholder="e.g. Aria, Max, BookingBot"
                           value={form.name}
                           onChange={(e) => set('name', e.target.value)}
                           autoFocus
                         />
                         <div>
-                          <p className="text-[12px] font-medium text-[var(--color-text-primary)] mb-2">Agent Type</p>
-                          <AgentTypeSelector value={form.typeId} onChange={(t) => set('typeId', t)} />
+                          <p className="text-[12px] font-medium text-[var(--color-text-primary)] mb-2">
+                            Agent Type
+                            {!isEdit && (
+                              <span className="ml-1.5 text-[10px] font-normal text-[var(--color-text-tertiary)]">
+                                — auto-fills the system prompt
+                              </span>
+                            )}
+                          </p>
+                          <AgentTypeSelector value={form.typeId} onChange={handleTypeChange} />
                         </div>
                         <div>
                           <p className="text-[12px] font-medium text-[var(--color-text-primary)] mb-2">Widget Color</p>
@@ -199,21 +389,77 @@ export function AgentModal({ open, onClose, initial, onSubmit, title = 'Create A
                       </>
                     )}
 
+                    {/* ── Step 2: Personality ── */}
                     {step === 1 && (
                       <>
+                        {/* Booking: calendar URL input */}
+                        {form.typeId === 'BOOKING' && (
+                          <div className="rounded-xl border border-[#0D9488]/30 bg-[#F0FDFA] p-4 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Calendar size={14} className="text-[#0D9488]" />
+                              <span className="text-[12px] font-semibold text-[#0D9488]">Calendar / Booking Link</span>
+                            </div>
+                            <p className="text-[11px] text-[#0F766E]">
+                              Paste your Calendly, Cal.com, or Google Calendar scheduling link. The agent will share it automatically.
+                            </p>
+                            <div className="relative">
+                              <input
+                                type="url"
+                                value={calendarUrl}
+                                onChange={(e) => setCalendarUrl(e.target.value)}
+                                placeholder="https://calendly.com/yourname/30min"
+                                className="w-full h-8 pl-3 pr-8 text-[13px] rounded-lg border border-[#0D9488]/40 bg-white text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] focus:outline-none focus:ring-1 focus:ring-[#0D9488] focus:border-[#0D9488]"
+                              />
+                              {calendarUrl && (
+                                <a
+                                  href={calendarUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[#0D9488]"
+                                >
+                                  <ExternalLink size={12} />
+                                </a>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-[#0F766E]">
+                              Injected as <code className="bg-[#CCFBF1] px-1 rounded">{'{{booking_link}}'}</code> in your system prompt.
+                            </p>
+                          </div>
+                        )}
+
                         <div>
-                          <label className="text-[12px] font-medium text-[var(--color-text-primary)] block mb-1">
-                            System Prompt *
-                          </label>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-[12px] font-medium text-[var(--color-text-primary)]">
+                              System Prompt *
+                            </label>
+                            {!isEdit && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const defaults = TYPE_DEFAULTS[form.typeId];
+                                  set('systemPrompt', defaults.systemPrompt);
+                                }}
+                                className="text-[10px] text-[var(--color-accent)] hover:underline"
+                              >
+                                Reset to default
+                              </button>
+                            )}
+                          </div>
                           <textarea
                             value={form.systemPrompt}
                             onChange={(e) => set('systemPrompt', e.target.value)}
-                            rows={5}
+                            rows={7}
                             className="w-full rounded-lg border border-[var(--color-border-default)] bg-[var(--color-bg-base)] text-[var(--color-text-primary)] text-[13px] px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] focus:border-[var(--color-accent)] resize-none placeholder:text-[var(--color-text-tertiary)] prose-prompt"
                             placeholder="Describe how the agent should behave..."
                           />
-                          <p className="text-[10px] text-[var(--color-text-tertiary)] mt-1">Use {'{{company_name}}'} as a placeholder.</p>
+                          <p className="text-[10px] text-[var(--color-text-tertiary)] mt-1">
+                            Use <code className="bg-[var(--color-bg-muted)] px-1 rounded">{'{{company_name}}'}</code>
+                            {form.typeId === 'BOOKING' && (
+                              <> and <code className="bg-[var(--color-bg-muted)] px-1 rounded">{'{{booking_link}}'}</code></>
+                            )} as placeholders.
+                          </p>
                         </div>
+
                         <Input
                           label="Greeting message"
                           placeholder="Hi! How can I help you today?"
@@ -227,18 +473,21 @@ export function AgentModal({ open, onClose, initial, onSubmit, title = 'Create A
                           onChange={(e) => set('tone', e.target.value)}
                         />
                         <div>
-                          <label className="text-[12px] font-medium text-[var(--color-text-primary)] block mb-1">Business Context</label>
+                          <label className="text-[12px] font-medium text-[var(--color-text-primary)] block mb-1">
+                            Business Context
+                          </label>
                           <textarea
                             value={form.businessContext}
                             onChange={(e) => set('businessContext', e.target.value)}
-                            rows={3}
+                            rows={2}
                             className="w-full rounded-lg border border-[var(--color-border-default)] bg-[var(--color-bg-base)] text-[var(--color-text-primary)] text-[13px] px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] focus:border-[var(--color-accent)] resize-none placeholder:text-[var(--color-text-tertiary)]"
-                            placeholder="Describe your business, products, and support scope..."
+                            placeholder="Describe your business, products, or any extra context the agent should know..."
                           />
                         </div>
                       </>
                     )}
 
+                    {/* ── Step 3: Configuration ── */}
                     {step === 2 && (
                       <>
                         <div>
@@ -265,15 +514,34 @@ export function AgentModal({ open, onClose, initial, onSubmit, title = 'Create A
                           value={form.widgetTheme}
                           onChange={(e) => set('widgetTheme', e.target.value as AgentFormData['widgetTheme'])}
                         />
-                        <Input
-                          label="Quick Replies (comma-separated)"
-                          placeholder="How do I reset my password?, Talk to a human"
-                          value={quickRepliesRaw}
-                          onChange={(e) => setQuickRepliesRaw(e.target.value)}
-                          hint="Up to 4 quick reply chips shown to the user"
-                        />
+                        <div>
+                          <label className="text-[12px] font-medium text-[var(--color-text-primary)] block mb-1">
+                            Quick Replies
+                          </label>
+                          <input
+                            type="text"
+                            value={quickRepliesRaw}
+                            onChange={(e) => setQuickRepliesRaw(e.target.value)}
+                            placeholder="Book a meeting, Check availability, Talk to a human"
+                            className="w-full h-8 px-3 text-[13px] rounded-lg border border-[var(--color-border-default)] bg-[var(--color-bg-base)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] focus:border-[var(--color-accent)]"
+                          />
+                          <p className="text-[10px] text-[var(--color-text-tertiary)] mt-1">
+                            Comma-separated. Up to 4 chips shown to the user.
+                          </p>
+                          {/* Preview chips */}
+                          {quickRepliesRaw.trim() && (
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              {quickRepliesRaw.split(',').map((qr) => qr.trim()).filter(Boolean).slice(0, 4).map((qr) => (
+                                <span key={qr} className="px-2.5 py-1 rounded-full bg-[var(--color-bg-subtle)] border border-[var(--color-border-subtle)] text-[11px] text-[var(--color-text-secondary)]">
+                                  {qr}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </>
                     )}
+
                   </div>
                 </motion.div>
               </AnimatePresence>
@@ -316,7 +584,7 @@ export function AgentModal({ open, onClose, initial, onSubmit, title = 'Create A
                   disabled={!stepValid[step]}
                   onClick={handleSubmit}
                 >
-                  {title.startsWith('Edit') ? 'Save Changes' : 'Create Agent'}
+                  {isEdit ? 'Save Changes' : 'Create Agent'}
                 </Button>
               )}
             </div>

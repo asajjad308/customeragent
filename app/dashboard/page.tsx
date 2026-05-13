@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Settings, Menu, LogOut } from 'lucide-react';
 import { signOut } from 'next-auth/react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -26,6 +28,23 @@ import { ConversationsPage } from '@/components/conversations/ConversationsPage'
 const QUICK_CHIPS = ['Billing issue', 'Reset password', 'Upgrade plan', 'Talk to human'];
 
 export default function DashboardPage() {
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const gcal = searchParams.get('gcal');
+    if (gcal === 'connected') {
+      toast.success('Google Calendar connected! Your booking agent can now check availability and create events.');
+      // Remove the param without a full reload
+      window.history.replaceState({}, '', '/dashboard');
+    } else if (gcal === 'error') {
+      toast.error('Failed to connect Google Calendar. Please try again.');
+      window.history.replaceState({}, '', '/dashboard');
+    } else if (gcal === 'denied') {
+      toast.error('Google Calendar access was denied.');
+      window.history.replaceState({}, '', '/dashboard');
+    }
+  }, []);
+
   const {
     theme,
     getActiveBot,
