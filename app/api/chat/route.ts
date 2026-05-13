@@ -55,7 +55,8 @@ export async function POST(request: NextRequest) {
       chatMessages = [...history, { role: 'user', content: String(body.message) }];
       model = agent.model ?? 'llama-3.3-70b-versatile';
       temperature = agent.temperature ?? 0.7;
-      maxTokens = agent.maxTokens ?? 512;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      maxTokens = (agent as any).maxTokens ?? 512;
     } else {
       // Legacy format — keep identical behaviour
       systemPrompt = body.systemPrompt as string;
@@ -176,6 +177,7 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         Connection: 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
       },
     });
   } catch (error) {
@@ -183,7 +185,17 @@ export async function POST(request: NextRequest) {
     console.error('Error calling Groq API:', message);
     return new Response(JSON.stringify({ error: message }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
     });
   }
+}
+
+export async function OPTIONS() {
+  return new Response(null, {
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
 }
