@@ -32,24 +32,35 @@ Today's date: ${today}
 
 CRITICAL OVERRIDE: Google Calendar is directly connected. You MUST use the JSON actions below to check real availability and create real calendar events. Do NOT share any booking URL or calendar link — that workflow is disabled when the calendar integration is active.
 
-BOOKING FLOW — follow this exactly:
-1. Ask what type of meeting the user wants.
-2. Ask for their preferred date (e.g. "tomorrow", "next Monday", "May 20").
-3. Emit EXACTLY this JSON on its own line to fetch real available slots:
+BOOKING FLOW — follow this exactly, step by step:
+
+STEP 1 — Ask what type of meeting they need (appointment, demo, consultation, etc.).
+
+STEP 2 — Ask for their full name and email address. Do not proceed until you have both.
+
+STEP 3 — Ask for their preferred date (e.g. "tomorrow", "next Monday", "May 20").
+
+STEP 4 — Check availability. Emit EXACTLY this JSON on its own line (nothing else on that line):
 {"booking_action":"check_availability","date":"<YYYY-MM-DD or natural phrase>","duration":30}
+The system will display available slots to the user automatically. Do NOT list slots yourself.
 
-4. The system will reply with available time slots. Present them to the user and ask which they prefer.
-5. Once the user picks a slot, collect their name and email if not already provided.
-6. Emit EXACTLY this JSON on its own line to create the calendar event:
-{"booking_action":"create_event","slot_start":"<ISO datetime>","slot_end":"<ISO datetime>","guest_name":"<name>","guest_email":"<email>","summary":"<meeting title>"}
+STEP 5 — The user will click a slot. Their message will look like:
+"I'd like the 9:00 AM slot (start: <ISO>, end: <ISO>)"
+When you receive this message, do NOT check availability again. The slot is already chosen.
+Extract the start and end ISO values from the parentheses.
 
-7. The system will confirm the booking. Tell the user it's confirmed and summarise the details.
+STEP 6 — You already have name and email from STEP 2. Emit EXACTLY this JSON on its own line.
+Use ONLY the actual values the user gave you — never use placeholders:
+{"booking_action":"create_event","slot_start":"<start ISO from user message>","slot_end":"<end ISO from user message>","guest_name":"<actual name from step 2>","guest_email":"<actual email from step 2>","summary":"<brief meeting title>"}
+
+STEP 7 — The system confirms the booking. Tell the user it is confirmed and summarise the details.
 
 RULES:
-- NEVER share a booking URL or calendar link. Always use the JSON actions instead.
-- NEVER invent time slots — always run check_availability first.
-- Emit the JSON blocks ONLY when triggering an action; do not include them in normal chat.
-- If no slots are available on a date, ask the user to pick another day.
+- NEVER share a booking URL or calendar link.
+- NEVER re-check availability after the user has picked a slot.
+- NEVER invent slot times — only use ISO times provided in the user's slot selection message.
+- Emit JSON blocks ONLY when triggering an action, not in normal conversation.
+- If no slots are available, ask the user to try a different date.
 === END CALENDAR BOOKING SYSTEM ===
 
 ${base}`;
@@ -79,9 +90,11 @@ async function handleBookingAction(
         )
       );
     } catch (err) {
+      console.error('[Calendar] check_availability error:', err);
+      const msg = err instanceof Error ? err.message : 'Unknown error';
       controller.enqueue(
         encoder.encode(
-          `data: ${JSON.stringify({ type: 'booking_error', message: 'Could not fetch availability. Is Google Calendar connected?' })}\n\n`
+          `data: ${JSON.stringify({ type: 'booking_error', message: `Could not fetch availability: ${msg}` })}\n\n`
         )
       );
     }
@@ -89,11 +102,30 @@ async function handleBookingAction(
   }
 
   if (action === 'create_event') {
+    const email = (parsed.guest_email ?? '').trim();
+    const name  = (parsed.guest_name  ?? '').trim();
+    const PLACEHOLDER_RE = /^(your\s+email|name|guest|user|example|test|placeholder|your\s+name)$/i;
+    const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+    if (!validEmail || PLACEHOLDER_RE.test(email) || PLACEHOLDER_RE.test(name) || !name) {
+      controller.enqueue(
+        encoder.encode(
+          `data: ${JSON.stringify({
+            type: 'booking_error',
+            message: !validEmail
+              ? 'Please ask the user for their real name and email address before booking.'
+              : 'Missing guest name. Please collect the user\'s name before booking.',
+          })}\n\n`
+        )
+      );
+      return;
+    }
+
     try {
       const event = await createEvent(tokens, {
         summary:    parsed.summary      ?? 'Meeting',
-        guestName:  parsed.guest_name   ?? 'Guest',
-        guestEmail: parsed.guest_email  ?? '',
+        guestName:  name,
+        guestEmail: email,
         startIso:   parsed.slot_start,
         endIso:     parsed.slot_end,
         description: `Booked via SupportAI`,
@@ -105,6 +137,7 @@ async function handleBookingAction(
         )
       );
     } catch (err) {
+      console.error('[Calendar] create_event error:', err);
       controller.enqueue(
         encoder.encode(
           `data: ${JSON.stringify({ type: 'booking_error', message: 'Failed to create event. Please try again.' })}\n\n`
@@ -249,6 +282,14 @@ export async function POST(request: NextRequest) {
           if (isNewFormat && isBookingAgent && googleTokens) {
             const bookingMatch = BOOKING_RE.exec(fullContent);
             if (bookingMatch) {
+              // Strip the raw JSON from the displayed assistant message
+              const cleanContent = fullContent.replace(bookingMatch[0], '').trim();
+              controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify({
+                  type: 'replace_content',
+                  content: cleanContent || 'Let me check that for you…',
+                })}\n\n`)
+              );
               await handleBookingAction(bookingMatch[0], googleTokens, encoder, controller);
             }
           }

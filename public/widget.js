@@ -377,9 +377,11 @@
         btn.className = 'sai-slot-btn';
         btn.innerHTML = '&#128336; ' + escHtml(slot.label);
         btn.addEventListener('click', function () {
-          // Remove the slot picker and send as a message
           if (wrap.parentNode) wrap.parentNode.removeChild(wrap);
-          inputEl.value = "I'd like the " + slot.label + ' slot';
+          // Force-end any in-progress stream so the message can be sent immediately
+          isStreaming = false;
+          if (abortCtrl) { try { abortCtrl.abort(); } catch(e) {} abortCtrl = null; }
+          inputEl.value = "I'd like the " + slot.label + ' slot (start: ' + slot.start + ', end: ' + slot.end + ')';
           sendMessage();
         });
         grid.appendChild(btn);
@@ -392,6 +394,11 @@
   }
 
   function renderBookingConfirmed(event) {
+    // Remove any open slot pickers
+    var existing = messagesEl.querySelectorAll('.sai-slots');
+    for (var i = 0; i < existing.length; i++) {
+      if (existing[i].parentNode) existing[i].parentNode.removeChild(existing[i]);
+    }
     if (typingEl.parentNode === messagesEl) messagesEl.removeChild(typingEl);
 
     var wrap = document.createElement('div');
@@ -485,7 +492,11 @@
             if (payload === '[DONE]') return;
             try {
               var parsed = JSON.parse(payload);
-              if (parsed.type === 'handoff') {
+              if (parsed.type === 'replace_content') {
+                bubble.textContent = parsed.content || '';
+                fullContent = parsed.content || '';
+                scrollBottom();
+              } else if (parsed.type === 'handoff') {
                 var notice = document.createElement('div');
                 notice.style.cssText = 'font-size:11px;text-align:center;color:#71717a;padding:6px 12px;background:rgba(37,99,235,0.06);border-radius:8px;margin:4px 0;font-family:-apple-system,sans-serif;';
                 notice.textContent = '↪ Transferring to ' + (parsed.toAgentName || 'another agent') + '…';

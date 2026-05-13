@@ -138,17 +138,21 @@ export function resolveDateStr(phrase: string): string {
   const today = new Date();
   const p = phrase.toLowerCase().trim();
 
-  if (p === 'today')     return toDateStr(today);
-  if (p === 'tomorrow')  { today.setDate(today.getDate() + 1); return toDateStr(today); }
-  if (p.startsWith('next ')) {
-    const days = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
-    const target = days.indexOf(p.slice(5));
-    if (target !== -1) {
-      const diff = (target - today.getDay() + 7) % 7 || 7;
-      today.setDate(today.getDate() + diff);
-      return toDateStr(today);
-    }
+  if (p === 'today')    return toDateStr(today);
+  if (p === 'tomorrow') { today.setDate(today.getDate() + 1); return toDateStr(today); }
+
+  const DAYS = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+
+  // "next monday", "this friday", bare "friday" — all resolve to the nearest future occurrence
+  const stripped = p.startsWith('next ') ? p.slice(5) : p.startsWith('this ') ? p.slice(5) : p;
+  const targetDay = DAYS.indexOf(stripped);
+  if (targetDay !== -1) {
+    // diff=0 means today — push to next week so we don't book on the same day
+    const diff = (targetDay - today.getDay() + 7) % 7 || 7;
+    today.setDate(today.getDate() + diff);
+    return toDateStr(today);
   }
+
   // Try direct parse (e.g., "May 15", "2026-05-15")
   const parsed = new Date(phrase);
   if (!isNaN(parsed.getTime())) return toDateStr(parsed);

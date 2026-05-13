@@ -120,11 +120,21 @@ export function AgentChatPreview({ agent, onClose }: AgentChatPreviewProps) {
           if (payload === '[DONE]') break;
           try {
             const parsed = JSON.parse(payload);
-            if (parsed.type === 'handoff') {
+            if (parsed.type === 'replace_content') {
+              setMessages((prev) => {
+                const next = [...prev];
+                const last = next[next.length - 1];
+                if (last?.role === 'assistant') {
+                  next[next.length - 1] = { ...last, content: parsed.content ?? '' };
+                }
+                return next;
+              });
+            } else if (parsed.type === 'handoff') {
               setHandoff({ toAgentName: parsed.toAgentName, reason: parsed.reason });
             } else if (parsed.type === 'booking_slots') {
               setBookingSlots({ date: parsed.date, slots: parsed.slots });
             } else if (parsed.type === 'booking_confirmed') {
+              setBookingSlots(null);
               setBookingConfirmed(parsed.event);
             } else if (parsed.type === 'booking_error') {
               setMessages((prev) => [
@@ -169,7 +179,10 @@ export function AgentChatPreview({ agent, onClose }: AgentChatPreviewProps) {
 
   const handleSlotPick = useCallback((slot: TimeSlot) => {
     setBookingSlots(null);
-    const text = `I'd like the ${slot.label} slot`;
+    setIsStreaming(false);
+    abortRef.current?.abort();
+    // Include ISO times so AI has exact slot data to create the event
+    const text = `I'd like the ${slot.label} slot (start: ${slot.start}, end: ${slot.end})`;
     sendMessage(text, messages);
   }, [messages, sendMessage]);
 
