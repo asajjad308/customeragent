@@ -5,11 +5,16 @@ import { z } from 'zod';
 
 const updateSchema = z.object({
   name: z.string().min(1).max(100).optional(),
+  typeId: z.enum(['SUPPORT', 'TECHNICAL', 'SALES', 'LEAD_GEN', 'ONBOARDING', 'HR', 'BOOKING', 'CUSTOM']).optional(),
   systemPrompt: z.string().min(1).optional(),
   greeting: z.string().min(1).optional(),
+  businessContext: z.string().optional(),
   tone: z.string().optional(),
   model: z.string().optional(),
   temperature: z.number().min(0).max(2).optional(),
+  maxTokens: z.number().int().positive().optional(),
+  widgetTheme: z.enum(['GLASSMORPHISM_DARK', 'NEO_BRUTALISM', 'SOFT_AURORA']).optional(),
+  quickReplies: z.array(z.string()).optional(),
   avatarColor: z.string().optional(),
   widgetColor: z.string().optional(),
   widgetPosition: z.string().optional(),
@@ -17,7 +22,6 @@ const updateSchema = z.object({
   allowedDomains: z.string().optional(),
   maxMsgPerHour: z.number().int().positive().optional(),
   blockedWords: z.string().optional(),
-  businessContext: z.string().optional(),
 });
 
 type RouteContext = { params: Promise<{ agentId: string }> };
@@ -27,8 +31,26 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
   const { error, session } = await requireAuth();
   if (error) return error;
 
-  const { error: agentError, agent } = await requireTenantAgent(agentId, session!.user.tenantId);
+  const { error: agentError } = await requireTenantAgent(agentId, session!.user.tenantId);
   if (agentError) return agentError;
+
+  const agent = await prisma.agent.findUnique({
+    where: { id: agentId },
+    include: {
+      connectionsFrom: {
+        include: {
+          toAgent: { select: { id: true, name: true, typeId: true, avatarColor: true, widgetColor: true } },
+        },
+        orderBy: { priority: 'asc' },
+      },
+      connectionsTo: {
+        include: {
+          fromAgent: { select: { id: true, name: true, typeId: true, avatarColor: true, widgetColor: true } },
+        },
+        orderBy: { priority: 'asc' },
+      },
+    },
+  });
 
   return NextResponse.json(agent);
 }

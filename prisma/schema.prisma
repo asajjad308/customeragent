@@ -6,6 +6,30 @@ datasource db {
   provider = "postgresql"
 }
 
+enum AgentType {
+  SUPPORT
+  TECHNICAL
+  SALES
+  LEAD_GEN
+  ONBOARDING
+  HR
+  BOOKING
+  CUSTOM
+}
+
+enum AgentStatus {
+  ACTIVE
+  PAUSED
+  DRAFT
+  ARCHIVED
+}
+
+enum WidgetTheme {
+  GLASSMORPHISM_DARK
+  NEO_BRUTALISM
+  SOFT_AURORA
+}
+
 model Tenant {
   id           String   @id @default(cuid())
   name         String
@@ -61,32 +85,59 @@ model Session {
 }
 
 model Agent {
-  id              String   @id @default(cuid())
+  id              String      @id @default(cuid())
   tenantId        String
   name            String
   slug            String
-  avatarColor     String   @default("#6366F1")
+  typeId          AgentType   @default(SUPPORT)
+  status          AgentStatus @default(DRAFT)
+  avatarColor     String      @default("#6366F1")
   systemPrompt    String
   businessContext String?
   greeting        String
-  tone            String   @default("friendly")
-  model           String   @default("llama-3.3-70b-versatile")
-  temperature     Float    @default(0.7)
-  isActive        Boolean  @default(true)
-  widgetPosition  String   @default("bottom-right")
-  widgetColor     String   @default("#6366F1")
+  tone            String      @default("friendly")
+  model           String      @default("llama-3.3-70b-versatile")
+  temperature     Float       @default(0.7)
+  maxTokens       Int         @default(512)
+  widgetTheme     WidgetTheme @default(SOFT_AURORA)
+  quickReplies    String[]    @default([])
+  isActive        Boolean     @default(true)
+  widgetPosition  String      @default("bottom-right")
+  widgetColor     String      @default("#6366F1")
   allowedDomains  String?
-  maxMsgPerHour   Int      @default(50)
+  maxMsgPerHour   Int         @default(50)
   blockedWords    String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  sessions        Int         @default(0)
+  messageCount    Int         @default(0)
+  satisfaction    Float?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  lastActiveAt    DateTime?
 
-  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  conversations Conversation[]
-  apiKeys       ApiKey[]
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversations   Conversation[]
+  apiKeys         ApiKey[]
+  connectionsFrom AgentConnection[] @relation("FromAgent")
+  connectionsTo   AgentConnection[] @relation("ToAgent")
 
   @@unique([tenantId, slug])
   @@map("agents")
+}
+
+model AgentConnection {
+  id          String   @id @default(cuid())
+  fromAgentId String
+  toAgentId   String
+  trigger     String
+  label       String
+  priority    Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  fromAgent Agent @relation("FromAgent", fields: [fromAgentId], references: [id], onDelete: Cascade)
+  toAgent   Agent @relation("ToAgent", fields: [toAgentId], references: [id], onDelete: Cascade)
+
+  @@unique([fromAgentId, toAgentId])
+  @@map("agent_connections")
 }
 
 model Conversation {
