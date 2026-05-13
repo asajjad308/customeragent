@@ -458,7 +458,12 @@
     fetch(baseUrl + '/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ agentId: agentId, message: text, history: history.slice(0, -1) }),
+      body: JSON.stringify({
+        agentId: agentId,
+        message: text,
+        history: history.slice(0, -1),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      }),
       signal: abortCtrl ? abortCtrl.signal : undefined,
     })
     .then(function (res) {
@@ -477,10 +482,6 @@
             history.push({ role: 'assistant', content: fullContent });
             isStreaming = false;
             sendBtn.disabled = !inputEl.value.trim();
-            // Show chips again after response
-            if (agent && agent.quickReplies && agent.quickReplies.length) {
-              renderChips(agent.quickReplies.slice(0, 4));
-            }
             return;
           }
           buf += dec.decode(result.value, { stream: true });

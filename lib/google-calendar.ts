@@ -57,9 +57,9 @@ export async function getAvailableSlots(
 ): Promise<TimeSlot[]> {
   const cal = calendarClient(tokens);
 
-  // Build day window in the target timezone
-  const dayStart = new Date(`${dateStr}T09:00:00`);
-  const dayEnd   = new Date(`${dateStr}T18:00:00`);
+  // Build 9 AM – 6 PM window in the user's local timezone
+  const dayStart = zonedHourToUTC(dateStr, 9,  timezone);
+  const dayEnd   = zonedHourToUTC(dateStr, 18, timezone);
 
   const freeBusy = await cal.freebusy.query({
     requestBody: {
@@ -88,7 +88,7 @@ export async function getAvailableSlots(
       slots.push({
         start: startDate.toISOString(),
         end:   new Date(slotEnd).toISOString(),
-        label: startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+        label: startDate.toLocaleTimeString('en-US', { timeZone: timezone, hour: 'numeric', minute: '2-digit', hour12: true }),
       });
     }
     cursor += step;
@@ -105,6 +105,30 @@ export interface BookingDetails {
   startIso: string;
   endIso: string;
   description?: string;
+  timezone?: string;
+}
+
+// ── Timezone helpers ──────────────────────────────────────────────────────────
+function getTimezoneOffsetMs(date: Date, timezone: string): number {
+  const fmt = (tz: string) => {
+    const f = new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+    });
+    const p = Object.fromEntries(
+      f.formatToParts(date).filter((x) => x.type !== 'literal').map((x) => [x.type, x.value])
+    );
+    return new Date(`${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}Z`).getTime();
+  };
+  return fmt(timezone) - fmt('UTC');
+}
+
+// Returns the UTC Date that corresponds to `hour:00` on `dateStr` in `timezone`
+function zonedHourToUTC(dateStr: string, hour: number, timezone: string): Date {
+  const hourStr = String(hour).padStart(2, '0');
+  const naiveUTC = new Date(`${dateStr}T${hourStr}:00:00.000Z`);
+  const offsetMs = getTimezoneOffsetMs(naiveUTC, timezone);
+  return new Date(naiveUTC.getTime() - offsetMs);
 }
 
 export async function createEvent(tokens: GoogleTokens, details: BookingDetails) {
@@ -116,8 +140,8 @@ export async function createEvent(tokens: GoogleTokens, details: BookingDetails)
     requestBody: {
       summary: details.summary,
       description: details.description ?? '',
-      start: { dateTime: details.startIso, timeZone: 'UTC' },
-      end:   { dateTime: details.endIso,   timeZone: 'UTC' },
+      start: { dateTime: details.startIso, timeZone: details.timezone ?? 'UTC' },
+      end:   { dateTime: details.endIso,   timeZone: details.timezone ?? 'UTC' },
       attendees: [{ email: details.guestEmail, displayName: details.guestName }],
       conferenceData: undefined,
     },

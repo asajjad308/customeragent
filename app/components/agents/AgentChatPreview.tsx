@@ -98,7 +98,12 @@ export function AgentChatPreview({ agent, onClose }: AgentChatPreviewProps) {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ agentId: agent.id, message: text, history }),
+        body: JSON.stringify({
+          agentId: agent.id,
+          message: text,
+          history,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        }),
         signal: ctrl.signal,
       });
 
@@ -337,8 +342,8 @@ export function AgentChatPreview({ agent, onClose }: AgentChatPreviewProps) {
         <div ref={bottomRef} />
       </div>
 
-      {/* Quick replies */}
-      {agent.quickReplies && agent.quickReplies.length > 0 && !isStreaming && !bookingSlots && (
+      {/* Quick replies — only shown before first user message */}
+      {agent.quickReplies && agent.quickReplies.length > 0 && messages.length === 1 && !isStreaming && (
         <div className="px-4 pb-2 flex gap-1.5 flex-wrap">
           {agent.quickReplies.slice(0, 4).map((qr) => (
             <button

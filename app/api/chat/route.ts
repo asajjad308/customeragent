@@ -41,7 +41,7 @@ STEP 2 — Ask for their full name and email address. Do not proceed until you h
 STEP 3 — Ask for their preferred date (e.g. "tomorrow", "next Monday", "May 20").
 
 STEP 4 — Check availability. Emit EXACTLY this JSON on its own line (nothing else on that line):
-{"booking_action":"check_availability","date":"<YYYY-MM-DD or natural phrase>","duration":30}
+{"booking_action":"check_availability","date":"<YYYY-MM-DD or natural phrase>","duration":60}
 The system will display available slots to the user automatically. Do NOT list slots yourself.
 
 STEP 5 — The user will click a slot. Their message will look like:
@@ -72,6 +72,7 @@ async function handleBookingAction(
   tokens: GoogleTokens,
   encoder: TextEncoder,
   controller: ReadableStreamDefaultController,
+  timezone: string,
 ): Promise<void> {
   let parsed: Record<string, string>;
   try { parsed = JSON.parse(rawJson); } catch { return; }
@@ -81,8 +82,8 @@ async function handleBookingAction(
   if (action === 'check_availability') {
     try {
       const dateStr = resolveDateStr(parsed.date ?? 'tomorrow');
-      const duration = parseInt(parsed.duration ?? '30', 10) || 30;
-      const slots = await getAvailableSlots(tokens, dateStr, duration);
+      const duration = parseInt(parsed.duration ?? '60', 10) || 60;
+      const slots = await getAvailableSlots(tokens, dateStr, duration, timezone);
 
       controller.enqueue(
         encoder.encode(
@@ -126,8 +127,9 @@ async function handleBookingAction(
         summary:    parsed.summary      ?? 'Meeting',
         guestName:  name,
         guestEmail: email,
-        startIso:   parsed.slot_start,
-        endIso:     parsed.slot_end,
+        startIso:    parsed.slot_start,
+        endIso:      parsed.slot_end,
+        timezone,
         description: `Booked via SupportAI`,
       });
 
@@ -172,6 +174,7 @@ export async function POST(request: NextRequest) {
     let tenantId: string | null = null;
     let isBookingAgent = false;
     let googleTokens: GoogleTokens | null = null;
+    const timezone: string = (body.timezone as string | undefined) || 'UTC';
 
     if (isNewFormat) {
       agentId = body.agentId as string;
@@ -290,7 +293,7 @@ export async function POST(request: NextRequest) {
                   content: cleanContent || 'Let me check that for you…',
                 })}\n\n`)
               );
-              await handleBookingAction(bookingMatch[0], googleTokens, encoder, controller);
+              await handleBookingAction(bookingMatch[0], googleTokens, encoder, controller, timezone);
             }
           }
 
