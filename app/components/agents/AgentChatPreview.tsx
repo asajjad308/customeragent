@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, X, ArrowRightLeft, RotateCcw, Calendar, CheckCircle2, Clock } from 'lucide-react';
+import { Send, X, ArrowRightLeft, RotateCcw, Calendar, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ds/Button';
 import { Spinner } from '@/components/ds/Spinner';
@@ -28,6 +28,12 @@ interface TimeSlot {
 interface BookingSlotsEvent {
   date: string;
   slots: TimeSlot[];
+}
+
+interface PendingBooking {
+  slot: TimeSlot;
+  name: string;
+  email: string;
 }
 
 interface BookingConfirmedEvent {
@@ -56,6 +62,14 @@ function formatDateTime(iso: string | null | undefined) {
   });
 }
 
+function formatCountdown(secs: number) {
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export function AgentChatPreview({ agent, onClose }: AgentChatPreviewProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: 'assistant', content: agent.greeting || 'Hi! How can I help you today?' },
@@ -63,14 +77,28 @@ export function AgentChatPreview({ agent, onClose }: AgentChatPreviewProps) {
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [handoff, setHandoff] = useState<HandoffEvent | null>(null);
+
+  // Booking state machine
   const [bookingSlots, setBookingSlots] = useState<BookingSlotsEvent | null>(null);
+  const [pendingSlot, setPendingSlot] = useState<TimeSlot | null>(null);       // slot clicked → show info form
+  const [infoForm, setInfoForm] = useState({ name: '', email: '' });
+  const [pendingBooking, setPendingBooking] = useState<PendingBooking | null>(null); // info filled → show confirm
   const [bookingConfirmed, setBookingConfirmed] = useState<BookingConfirmedEvent | null>(null);
+  const [countdown, setCountdown] = useState<number | null>(null);
+
   const bottomRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, bookingSlots, bookingConfirmed]);
+  }, [messages, bookingSlots, pendingSlot, pendingBooking, bookingConfirmed]);
+
+  // Countdown timer
+  useEffect(() => {
+    if (countdown === null || countdown <= 0) return;
+    const t = setTimeout(() => setCountdown((c) => (c !== null ? c - 1 : null)), 1000);
+    return () => clearTimeout(t);
+  }, [countdown]);
 
   const resetChat = useCallback(() => {
     abortRef.current?.abort();
@@ -79,7 +107,11 @@ export function AgentChatPreview({ agent, onClose }: AgentChatPreviewProps) {
     setIsStreaming(false);
     setHandoff(null);
     setBookingSlots(null);
+    setPendingSlot(null);
+    setInfoForm({ name: '', email: '' });
+    setPendingBooking(null);
     setBookingConfirmed(null);
+    setCountdown(null);
   }, [agent.greeting]);
 
   const sendMessage = useCallback(async (text: string, currentMessages: ChatMessage[]) => {
@@ -140,7 +172,10 @@ export function AgentChatPreview({ agent, onClose }: AgentChatPreviewProps) {
               setBookingSlots({ date: parsed.date, slots: parsed.slots });
             } else if (parsed.type === 'booking_confirmed') {
               setBookingSlots(null);
+              setPendingSlot(null);
+              setPendingBooking(null);
               setBookingConfirmed(parsed.event);
+              setCountdown(300); // 5-minute email confirmation countdown
             } else if (parsed.type === 'booking_error') {
               setMessages((prev) => [
                 ...prev,
@@ -182,14 +217,31 @@ export function AgentChatPreview({ agent, onClose }: AgentChatPreviewProps) {
     await sendMessage(text, messages);
   }, [input, isStreaming, messages, sendMessage]);
 
+  // Step 1: slot clicked → show info form
   const handleSlotPick = useCallback((slot: TimeSlot) => {
+    setPendingSlot(slot);
+    setInfoForm({ name: '', email: '' });
+  }, []);
+
+  // Step 2: info form submitted → show confirmation
+  const handleInfoSubmit = useCallback(() => {
+    if (!pendingSlot) return;
+    if (!infoForm.name.trim() || !EMAIL_RE.test(infoForm.email)) return;
+    setPendingBooking({ slot: pendingSlot, name: infoForm.name.trim(), email: infoForm.email.trim() });
+    setPendingSlot(null);
     setBookingSlots(null);
+  }, [pendingSlot, infoForm]);
+
+  // Step 3: confirmed → send to AI with all info in one message
+  const handleConfirm = useCallback(() => {
+    if (!pendingBooking) return;
+    const { slot, name, email } = pendingBooking;
+    setPendingBooking(null);
     setIsStreaming(false);
     abortRef.current?.abort();
-    // Include ISO times so AI has exact slot data to create the event
-    const text = `I'd like the ${slot.label} slot (start: ${slot.start}, end: ${slot.end})`;
+    const text = `Book my appointment - Slot: ${slot.label} (start: ${slot.start}, end: ${slot.end}), Name: ${name}, Email: ${email}`;
     sendMessage(text, messages);
-  }, [messages, sendMessage]);
+  }, [pendingBooking, messages, sendMessage]);
 
   return (
     <motion.div
@@ -263,18 +315,16 @@ export function AgentChatPreview({ agent, onClose }: AgentChatPreviewProps) {
             >
               <ArrowRightLeft size={13} className="text-[var(--color-accent)] mt-0.5 flex-shrink-0" />
               <div>
-                <div className="text-[11px] font-semibold text-[var(--color-accent)]">
-                  Handoff → {handoff.toAgentName}
-                </div>
+                <div className="text-[11px] font-semibold text-[var(--color-accent)]">Handoff → {handoff.toAgentName}</div>
                 <div className="text-[11px] text-[var(--color-text-secondary)]">{handoff.reason}</div>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Booking slots picker */}
+        {/* STEP 1 — Slot picker */}
         <AnimatePresence>
-          {bookingSlots && (
+          {bookingSlots && !pendingSlot && !pendingBooking && (
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -307,33 +357,148 @@ export function AgentChatPreview({ agent, onClose }: AgentChatPreviewProps) {
           )}
         </AnimatePresence>
 
-        {/* Booking confirmed card */}
+        {/* STEP 2 — Info form (shown after slot selected) */}
+        <AnimatePresence>
+          {pendingSlot && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              className="p-3 rounded-xl border border-[var(--color-border-default)] bg-[var(--color-bg-subtle)] space-y-2"
+            >
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <Clock size={11} className="text-[var(--color-accent)]" />
+                <span className="text-[11px] font-semibold text-[var(--color-text-primary)]">
+                  Selected: {pendingSlot.label}
+                </span>
+              </div>
+              <p className="text-[10px] text-[var(--color-text-tertiary)]">Enter your details to confirm this slot</p>
+              <input
+                autoFocus
+                type="text"
+                placeholder="Full name"
+                value={infoForm.name}
+                onChange={(e) => setInfoForm((f) => ({ ...f, name: e.target.value }))}
+                className="w-full text-[12px] px-2.5 py-1.5 rounded-lg border border-[var(--color-border-default)] bg-[var(--surface-0)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] outline-none focus:border-[var(--color-accent)] transition-colors"
+              />
+              <input
+                type="email"
+                placeholder="Email address"
+                value={infoForm.email}
+                onChange={(e) => setInfoForm((f) => ({ ...f, email: e.target.value }))}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleInfoSubmit(); }}
+                className="w-full text-[12px] px-2.5 py-1.5 rounded-lg border border-[var(--color-border-default)] bg-[var(--surface-0)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] outline-none focus:border-[var(--color-accent)] transition-colors"
+              />
+              <div className="flex gap-2 pt-0.5">
+                <button
+                  onClick={handleInfoSubmit}
+                  disabled={!infoForm.name.trim() || !EMAIL_RE.test(infoForm.email)}
+                  className="flex-1 py-1.5 rounded-lg bg-[var(--color-accent)] text-white text-[12px] font-semibold disabled:opacity-40 hover:bg-[var(--color-accent-hover)] transition-colors"
+                >
+                  Continue
+                </button>
+                <button
+                  onClick={() => { setPendingSlot(null); setInfoForm({ name: '', email: '' }); }}
+                  className="flex-1 py-1.5 rounded-lg border border-[var(--color-border-default)] text-[12px] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)] transition-colors"
+                >
+                  Back
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* STEP 3 — Confirmation card with all details */}
+        <AnimatePresence>
+          {pendingBooking && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              className="p-3 rounded-xl border-2 border-[var(--color-accent)] bg-[var(--color-accent-subtle)] space-y-2"
+            >
+              <div className="text-[11px] font-semibold text-[var(--color-text-primary)]">Confirm your appointment</div>
+              <div className="bg-[var(--surface-0)] rounded-lg p-2.5 space-y-1 text-[11px]">
+                <div className="flex justify-between">
+                  <span className="text-[var(--color-text-tertiary)]">Time</span>
+                  <span className="font-medium text-[var(--color-text-primary)]">{pendingBooking.slot.label}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[var(--color-text-tertiary)]">Name</span>
+                  <span className="font-medium text-[var(--color-text-primary)]">{pendingBooking.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[var(--color-text-tertiary)]">Email</span>
+                  <span className="font-medium text-[var(--color-text-primary)] truncate ml-2">{pendingBooking.email}</span>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleConfirm}
+                  className="flex-1 py-1.5 rounded-lg bg-[var(--color-accent)] text-white text-[12px] font-semibold hover:bg-[var(--color-accent-hover)] transition-colors"
+                >
+                  Confirm Booking
+                </button>
+                <button
+                  onClick={() => { setPendingBooking(null); }}
+                  className="flex-1 py-1.5 rounded-lg border border-[var(--color-border-default)] text-[12px] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)] transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* STEP 4 — Booking confirmed + countdown */}
         <AnimatePresence>
           {bookingConfirmed && (
             <motion.div
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="p-3 rounded-xl bg-[#DCFCE7] dark:bg-[#14532D]/30 border border-[#86EFAC] dark:border-[#16A34A]/40"
+              className="rounded-xl overflow-hidden border border-[#86EFAC] dark:border-[#16A34A]/40"
             >
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <CheckCircle2 size={13} className="text-[#16A34A]" />
-                <span className="text-[11px] font-semibold text-[#16A34A]">Appointment Confirmed</span>
+              <div className="bg-[#DCFCE7] dark:bg-[#14532D]/30 p-3 space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 size={13} className="text-[#16A34A]" />
+                  <span className="text-[11px] font-semibold text-[#16A34A]">Appointment Confirmed</span>
+                </div>
+                <div className="text-[11px] font-medium text-[var(--color-text-primary)]">{bookingConfirmed.summary}</div>
+                <div className="text-[10px] text-[var(--color-text-secondary)]">{formatDateTime(bookingConfirmed.start)}</div>
+                {bookingConfirmed.htmlLink && (
+                  <a
+                    href={bookingConfirmed.htmlLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block mt-1 text-[10px] font-medium text-[#16A34A] underline underline-offset-2"
+                  >
+                    Open in Google Calendar →
+                  </a>
+                )}
               </div>
-              <div className="text-[11px] font-medium text-[var(--color-text-primary)] mb-0.5">
-                {bookingConfirmed.summary}
-              </div>
-              <div className="text-[10px] text-[var(--color-text-secondary)]">
-                {formatDateTime(bookingConfirmed.start)}
-              </div>
-              {bookingConfirmed.htmlLink && (
-                <a
-                  href={bookingConfirmed.htmlLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-block mt-2 text-[10px] font-medium text-[#16A34A] underline underline-offset-2"
-                >
-                  Open in Google Calendar →
-                </a>
+
+              {/* Email confirmation countdown */}
+              {countdown !== null && countdown > 0 && (
+                <div className="bg-amber-50 dark:bg-amber-900/20 border-t border-amber-200 dark:border-amber-700/40 px-3 py-2">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle size={12} className="text-amber-600 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <div className="text-[10px] font-semibold text-amber-700 dark:text-amber-400">
+                        Check your email and click <strong>"Yes"</strong> to secure your slot
+                      </div>
+                      <div className="text-[10px] text-amber-600 dark:text-amber-500 mt-0.5">
+                        Slot reserved for <span className="font-bold font-numeric">{formatCountdown(countdown)}</span> — others may book it if you don't confirm
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {countdown === 0 && (
+                <div className="bg-red-50 dark:bg-red-900/20 border-t border-red-200 dark:border-red-700/40 px-3 py-2">
+                  <div className="text-[10px] text-red-600 dark:text-red-400 font-medium">
+                    Time expired — please check your email and click "Yes" to still confirm your slot.
+                  </div>
+                </div>
               )}
             </motion.div>
           )}

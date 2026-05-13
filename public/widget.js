@@ -180,6 +180,18 @@
       '.sai-confirmed-summary{font-size:11px;font-weight:500;color:#166534;font-family:-apple-system,sans-serif;margin-bottom:2px;}',
       '.sai-confirmed-time{font-size:10px;color:#4b7c59;font-family:-apple-system,sans-serif;margin-bottom:6px;}',
       '.sai-confirmed-link{font-size:10px;color:#16a34a;text-decoration:underline;font-family:-apple-system,sans-serif;}',
+      '.sai-confirm-card{background:' + t.botBubble + ';border:2px solid ' + t.inputFocusBorder + ';border-radius:12px;padding:12px;align-self:flex-start;max-width:90%;}',
+      '.sai-confirm-title{font-size:11px;font-weight:600;color:' + t.headerText + ';margin-bottom:4px;font-family:-apple-system,sans-serif;}',
+      '.sai-confirm-time{font-size:12px;font-weight:700;color:' + t.headerText + ';margin-bottom:10px;font-family:-apple-system,sans-serif;}',
+      '.sai-confirm-btns{display:flex;gap:8px;}',
+      '.sai-confirm-yes{flex:1;padding:7px;border-radius:8px;border:none;background:' + t.sendBg + ';color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:-apple-system,sans-serif;}',
+      '.sai-confirm-no{flex:1;padding:7px;border-radius:8px;border:' + t.inputBorder + ';background:transparent;color:' + t.botText + ';font-size:12px;font-weight:600;cursor:pointer;font-family:-apple-system,sans-serif;}',
+      '.sai-info-form{background:' + t.botBubble + ';border:' + t.botBorder + ';border-radius:12px;padding:12px;align-self:flex-start;max-width:95%;width:100%;box-sizing:border-box;}',
+      '.sai-info-form-title{font-size:11px;font-weight:600;color:' + t.headerText + ';margin-bottom:8px;font-family:-apple-system,sans-serif;}',
+      '.sai-info-input{width:100%;box-sizing:border-box;padding:7px 10px;border-radius:8px;border:' + t.inputBorder + ';background:' + t.inputBg + ';color:' + t.botText + ';font-size:12px;font-family:-apple-system,sans-serif;outline:none;margin-bottom:6px;}',
+      '.sai-info-input:focus{border-color:' + t.inputFocusBorder + ';}',
+      '.sai-info-submit{width:100%;padding:8px;border-radius:8px;border:none;background:' + t.sendBg + ';color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:-apple-system,sans-serif;margin-top:2px;}',
+      '.sai-info-submit:disabled{opacity:.4;cursor:not-allowed;}',
       '@media(max-width:420px){#sai-panel{width:calc(100vw - 24px);' + pos.side + ':12px;}}',
     ].join('');
 
@@ -377,12 +389,7 @@
         btn.className = 'sai-slot-btn';
         btn.innerHTML = '&#128336; ' + escHtml(slot.label);
         btn.addEventListener('click', function () {
-          if (wrap.parentNode) wrap.parentNode.removeChild(wrap);
-          // Force-end any in-progress stream so the message can be sent immediately
-          isStreaming = false;
-          if (abortCtrl) { try { abortCtrl.abort(); } catch(e) {} abortCtrl = null; }
-          inputEl.value = "I'd like the " + slot.label + ' slot (start: ' + slot.start + ', end: ' + slot.end + ')';
-          sendMessage();
+          showInfoForm(slot, wrap);
         });
         grid.appendChild(btn);
       });
@@ -393,11 +400,158 @@
     scrollBottom();
   }
 
-  function renderBookingConfirmed(event) {
-    // Remove any open slot pickers
-    var existing = messagesEl.querySelectorAll('.sai-slots');
+  // Step 1: slot clicked → show info form immediately
+  function showInfoForm(slot, slotsWrap) {
+    var existingForms = messagesEl.querySelectorAll('.sai-info-form, .sai-confirm-card');
+    for (var i = 0; i < existingForms.length; i++) {
+      if (existingForms[i].parentNode) existingForms[i].parentNode.removeChild(existingForms[i]);
+    }
+    if (typingEl.parentNode === messagesEl) messagesEl.removeChild(typingEl);
+
+    isStreaming = false;
+    if (abortCtrl) { try { abortCtrl.abort(); } catch(e) {} abortCtrl = null; }
+
+    var form = document.createElement('div');
+    form.className = 'sai-info-form';
+
+    var header = document.createElement('div');
+    header.className = 'sai-info-form-title';
+    header.innerHTML = '&#128336; Selected: ' + escHtml(slot.label);
+    form.appendChild(header);
+
+    var subtitle = document.createElement('div');
+    subtitle.style.cssText = 'font-size:10px;color:#71717a;margin-bottom:8px;font-family:-apple-system,sans-serif;';
+    subtitle.textContent = 'Enter your details to continue';
+    form.appendChild(subtitle);
+
+    var nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.placeholder = 'Full name';
+    nameInput.className = 'sai-info-input';
+    form.appendChild(nameInput);
+
+    var emailInput = document.createElement('input');
+    emailInput.type = 'email';
+    emailInput.placeholder = 'Email address';
+    emailInput.className = 'sai-info-input';
+    form.appendChild(emailInput);
+
+    var btnRow = document.createElement('div');
+    btnRow.style.cssText = 'display:flex;gap:8px;margin-top:4px;';
+
+    var continueBtn = document.createElement('button');
+    continueBtn.className = 'sai-info-submit';
+    continueBtn.style.cssText = 'flex:1;width:auto;';
+    continueBtn.textContent = 'Continue';
+    continueBtn.disabled = true;
+
+    var backBtn = document.createElement('button');
+    backBtn.className = 'sai-confirm-no';
+    backBtn.style.flex = '1';
+    backBtn.textContent = 'Back';
+    backBtn.addEventListener('click', function () {
+      if (form.parentNode) form.parentNode.removeChild(form);
+      messagesEl.appendChild(typingEl);
+      scrollBottom();
+    });
+
+    function validate() {
+      var emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput.value.trim());
+      continueBtn.disabled = !nameInput.value.trim() || !emailOk;
+    }
+    nameInput.addEventListener('input', validate);
+    emailInput.addEventListener('input', validate);
+    emailInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !continueBtn.disabled) continueBtn.click();
+    });
+
+    continueBtn.addEventListener('click', function () {
+      var name = nameInput.value.trim();
+      var email = emailInput.value.trim();
+      if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+      if (form.parentNode) form.parentNode.removeChild(form);
+      showConfirmCard(slot, name, email, slotsWrap);
+    });
+
+    btnRow.appendChild(continueBtn);
+    btnRow.appendChild(backBtn);
+    form.appendChild(btnRow);
+    messagesEl.appendChild(form);
+    messagesEl.appendChild(typingEl);
+    scrollBottom();
+    setTimeout(function () { nameInput.focus(); }, 50);
+  }
+
+  // Step 2: info submitted → show confirmation card with all details
+  function showConfirmCard(slot, name, email, slotsWrap) {
+    var existing = messagesEl.querySelectorAll('.sai-confirm-card');
     for (var i = 0; i < existing.length; i++) {
       if (existing[i].parentNode) existing[i].parentNode.removeChild(existing[i]);
+    }
+    if (typingEl.parentNode === messagesEl) messagesEl.removeChild(typingEl);
+
+    var card = document.createElement('div');
+    card.className = 'sai-confirm-card';
+
+    var title = document.createElement('div');
+    title.className = 'sai-confirm-title';
+    title.textContent = 'Confirm your appointment';
+    card.appendChild(title);
+
+    var table = document.createElement('div');
+    table.style.cssText = 'background:rgba(0,0,0,0.04);border-radius:8px;padding:8px 10px;margin:6px 0;';
+    [['Time', slot.label], ['Name', name], ['Email', email]].forEach(function (row) {
+      var rowEl = document.createElement('div');
+      rowEl.style.cssText = 'display:flex;justify-content:space-between;margin-bottom:3px;font-size:11px;font-family:-apple-system,sans-serif;';
+      var lbl = document.createElement('span');
+      lbl.style.color = '#71717a';
+      lbl.textContent = row[0];
+      var val = document.createElement('span');
+      val.style.fontWeight = '600';
+      val.textContent = row[1];
+      rowEl.appendChild(lbl);
+      rowEl.appendChild(val);
+      table.appendChild(rowEl);
+    });
+    card.appendChild(table);
+
+    var btns = document.createElement('div');
+    btns.className = 'sai-confirm-btns';
+
+    var yesBtn = document.createElement('button');
+    yesBtn.className = 'sai-confirm-yes';
+    yesBtn.textContent = 'Confirm Booking';
+    yesBtn.addEventListener('click', function () {
+      if (card.parentNode) card.parentNode.removeChild(card);
+      if (slotsWrap && slotsWrap.parentNode) slotsWrap.parentNode.removeChild(slotsWrap);
+      isStreaming = false;
+      if (abortCtrl) { try { abortCtrl.abort(); } catch(e) {} abortCtrl = null; }
+      inputEl.value = 'Book my appointment - Slot: ' + slot.label + ' (start: ' + slot.start + ', end: ' + slot.end + '), Name: ' + name + ', Email: ' + email;
+      sendMessage();
+    });
+
+    var noBtn = document.createElement('button');
+    noBtn.className = 'sai-confirm-no';
+    noBtn.textContent = 'Cancel';
+    noBtn.addEventListener('click', function () {
+      if (card.parentNode) card.parentNode.removeChild(card);
+      messagesEl.appendChild(typingEl);
+      scrollBottom();
+    });
+
+    btns.appendChild(yesBtn);
+    btns.appendChild(noBtn);
+    card.appendChild(btns);
+    messagesEl.appendChild(card);
+    messagesEl.appendChild(typingEl);
+    scrollBottom();
+  }
+
+  function renderBookingConfirmed(event) {
+    // Remove any open slot pickers, info forms, confirm cards
+    var toRemove = messagesEl.querySelectorAll('.sai-slots, .sai-confirm-card, .sai-info-form');
+    for (var i = 0; i < toRemove.length; i++) {
+      if (toRemove[i].parentNode) toRemove[i].parentNode.removeChild(toRemove[i]);
     }
     if (typingEl.parentNode === messagesEl) messagesEl.removeChild(typingEl);
 
@@ -434,6 +588,54 @@
     }
 
     messagesEl.appendChild(wrap);
+
+    // 5-minute countdown warning
+    var countdownSecs = 300;
+    var cdWrap = document.createElement('div');
+    cdWrap.style.cssText = 'background:#fffbeb;border:1px solid #fcd34d;border-radius:12px;padding:8px 10px;align-self:flex-start;max-width:90%;margin-top:4px;';
+
+    var cdInner = document.createElement('div');
+    cdInner.style.cssText = 'display:flex;align-items:flex-start;gap:6px;';
+
+    var cdIcon = document.createElement('span');
+    cdIcon.style.cssText = 'font-size:11px;color:#d97706;flex-shrink:0;margin-top:1px;';
+    cdIcon.textContent = '⚠';
+
+    var cdText = document.createElement('div');
+
+    var cdHeading = document.createElement('div');
+    cdHeading.style.cssText = 'font-size:10px;font-weight:600;color:#b45309;font-family:-apple-system,sans-serif;';
+    cdHeading.innerHTML = 'Check your email and click <strong>"Yes"</strong> to secure your slot';
+
+    var cdTimer = document.createElement('div');
+    cdTimer.style.cssText = 'font-size:10px;color:#d97706;font-family:-apple-system,sans-serif;margin-top:2px;';
+
+    function updateTimer() {
+      if (countdownSecs > 0) {
+        var m = Math.floor(countdownSecs / 60);
+        var s = countdownSecs % 60;
+        cdTimer.textContent = 'Slot reserved for ' + m + ':' + (s < 10 ? '0' : '') + s + ' — others may book it if you don\'t confirm';
+      } else {
+        cdTimer.textContent = 'Time expired — please check your email and click "Yes" to still confirm your slot.';
+        cdTimer.style.color = '#dc2626';
+        cdHeading.style.color = '#dc2626';
+        cdIcon.style.color = '#dc2626';
+      }
+    }
+    updateTimer();
+    var cdInterval = setInterval(function () {
+      countdownSecs--;
+      updateTimer();
+      if (countdownSecs <= 0) clearInterval(cdInterval);
+    }, 1000);
+
+    cdText.appendChild(cdHeading);
+    cdText.appendChild(cdTimer);
+    cdInner.appendChild(cdIcon);
+    cdInner.appendChild(cdText);
+    cdWrap.appendChild(cdInner);
+
+    messagesEl.appendChild(cdWrap);
     messagesEl.appendChild(typingEl);
     scrollBottom();
   }
@@ -493,7 +695,9 @@
             if (payload === '[DONE]') return;
             try {
               var parsed = JSON.parse(payload);
-              if (parsed.type === 'replace_content') {
+              if (parsed.type === 'booking_form') {
+                // Info form is now UI-driven (shown on slot click) — no-op
+              } else if (parsed.type === 'replace_content') {
                 bubble.textContent = parsed.content || '';
                 fullContent = parsed.content || '';
                 scrollBottom();
