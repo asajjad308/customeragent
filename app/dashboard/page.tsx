@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { LeftSidebar } from '@/components/sidebar/LeftSidebar';
+import { Sidebar } from '@/components/layout/Sidebar';
+import { BottomTabBar } from '@/components/layout/BottomTabBar';
 import { RightPanel } from '@/components/sidebar/RightPanel';
 import { ChatArea } from '@/components/chat/ChatArea';
 import { InputBar } from '@/components/chat/InputBar';
@@ -132,11 +133,9 @@ export default function DashboardPage() {
   const themeClasses = themes[theme];
 
   const sidebarContent = (
-    <LeftSidebar
+    <Sidebar
       selectedNav={selectedNav}
       onNavChange={handleNavChange}
-      onConversationSelect={handleConversationSelect}
-      onNewConversation={handleNewConversation}
     />
   );
 
@@ -245,7 +244,7 @@ export default function DashboardPage() {
   return (
     <div className={`h-screen flex overflow-hidden ${themeClasses.background}`}>
       {/* Left sidebar — hidden on mobile, shown on md+ */}
-      <div className="hidden md:flex">
+      <div className="hidden md:flex h-full">
         {sidebarContent}
       </div>
 
@@ -253,6 +252,9 @@ export default function DashboardPage() {
       <div className="flex flex-1 min-w-0 overflow-hidden">
         {mainContent()}
       </div>
+
+      {/* Mobile bottom tab bar */}
+      <BottomTabBar selectedNav={selectedNav} onNavChange={handleNavChange} />
     </div>
   );
 }

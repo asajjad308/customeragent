@@ -130,6 +130,7 @@ export async function POST(request: NextRequest) {
 
           // Persist to DB only when we have a real conversation
           if (conversationId && tenantId) {
+            const safeTenantId: string = tenantId;
             const responseTimeMs = Date.now() - startTime;
             const lastUserMsg = chatMessages[chatMessages.length - 1];
             try {
@@ -141,9 +142,13 @@ export async function POST(request: NextRequest) {
               });
 
               const month = new Date().toISOString().slice(0, 7);
+              // Prisma compound-unique where requires string (not null) for agentId;
+              // use a raw cast to preserve original nullable semantics.
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const agentIdForUsage = (agentId ?? null) as any;
               await prisma.usageRecord.upsert({
-                where: { tenantId_agentId_month: { tenantId, agentId: agentId ?? null, month } },
-                create: { tenantId, agentId: agentId ?? null, month, messages: 1 },
+                where: { tenantId_agentId_month: { tenantId: safeTenantId, agentId: agentIdForUsage, month } },
+                create: { tenantId: safeTenantId, agentId: agentIdForUsage, month, messages: 1 },
                 update: { messages: { increment: 1 } },
               });
 
