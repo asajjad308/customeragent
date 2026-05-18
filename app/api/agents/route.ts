@@ -8,6 +8,7 @@ const createSchema = z.object({
   name: z.string().min(1).max(100),
   slug: z.string().min(1).max(100).regex(/^[a-z0-9-]+$/),
   typeId: z.enum(['SUPPORT', 'TECHNICAL', 'SALES', 'LEAD_GEN', 'ONBOARDING', 'HR', 'BOOKING', 'CUSTOM']).optional(),
+  platform: z.enum(['WEBSITE', 'FACEBOOK', 'INSTAGRAM', 'WHATSAPP', 'LINKEDIN', 'TWITTER']).optional(),
   systemPrompt: z.string().min(1),
   greeting: z.string().min(1),
   businessContext: z.string().optional(),

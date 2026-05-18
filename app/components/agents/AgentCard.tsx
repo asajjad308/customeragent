@@ -6,6 +6,7 @@ import { MoreVertical, Play, Pause, Archive, Trash2, Edit2, MessageSquare, Zap }
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ds/Badge';
 import { agentTypeColors, agentStatusColors } from '@/lib/design-system';
+import { PLATFORM_META } from '@/lib/platforms';
 import type { Agent, AgentStatus } from '@/store/agentsStore';
 
 const STATUS_VARIANT: Record<AgentStatus, 'success' | 'warning' | 'default' | 'danger'> = {
@@ -103,6 +104,17 @@ export function AgentCard({ agent, selected, onClick, onEdit, onStatusChange, on
           <Badge variant={STATUS_VARIANT[agent.status]} dot size="sm">
             {statusPalette.label}
           </Badge>
+          {agent.platform && agent.platform !== 'WEBSITE' && (() => {
+            const pm = PLATFORM_META[agent.platform];
+            return (
+              <span
+                className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-bold text-white"
+                style={{ backgroundColor: pm.color }}
+              >
+                {pm.shortName}
+              </span>
+            );
+          })()}
           {agent.model && (
             <Badge variant="outline" size="sm">
               <Zap size={9} className="mr-0.5" />

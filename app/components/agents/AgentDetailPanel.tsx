@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { X, Edit2, Code2, MessageSquare, Link2, Cpu, Activity, Calendar, CheckCircle2, AlertCircle } from 'lucide-react';
+import { X, Edit2, Code2, MessageSquare, Link2, Cpu, Activity, Calendar, CheckCircle2, AlertCircle, Share2 } from 'lucide-react';
 import { Button } from '@/components/ds/Button';
 import { Badge } from '@/components/ds/Badge';
 import { Tabs } from '@/components/ds/Tabs';
 import { AgentConnections } from './AgentConnections';
 import { AgentEmbedCode } from './AgentEmbedCode';
+import { PlatformConnectionPanel } from './PlatformConnectionPanel';
 import { slideInRight } from '@/lib/animations';
 import { agentTypeColors, agentStatusColors, DETAIL_WIDTH } from '@/lib/design-system';
 import type { Agent, AgentStatus } from '@/store/agentsStore';
@@ -86,6 +87,7 @@ const STATUS_VARIANT: Record<AgentStatus, 'success' | 'warning' | 'default' | 'd
 
 const TABS = [
   { id: 'overview',     label: 'Overview',    icon: <Activity size={12} /> },
+  { id: 'platform',    label: 'Platform',    icon: <Share2 size={12} /> },
   { id: 'connections',  label: 'Connections', icon: <Link2 size={12} /> },
   { id: 'embed',        label: 'Embed',       icon: <Code2 size={12} /> },
 ];
@@ -229,6 +231,13 @@ export function AgentDetailPanel({ agent, allAgents, onClose, onEdit, onChatPrev
                     Open Chat Preview
                   </Button>
                 </>
+              )}
+
+              {activeTab === 'platform' && (
+                <PlatformConnectionPanel
+                  agentId={agent.id}
+                  currentPlatform={agent.platform ?? 'WEBSITE'}
+                />
               )}
 
               {activeTab === 'connections' && (

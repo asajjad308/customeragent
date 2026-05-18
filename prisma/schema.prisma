@@ -30,6 +30,15 @@ enum WidgetTheme {
   SOFT_AURORA
 }
 
+enum Platform {
+  WEBSITE
+  FACEBOOK
+  INSTAGRAM
+  WHATSAPP
+  LINKEDIN
+  TWITTER
+}
+
 model Tenant {
   id           String   @id @default(cuid())
   name         String
@@ -107,6 +116,7 @@ model Agent {
   allowedDomains  String?
   maxMsgPerHour   Int         @default(50)
   blockedWords    String?
+  platform        Platform    @default(WEBSITE)
   sessions        Int         @default(0)
   messageCount    Int         @default(0)
   satisfaction    Float?
@@ -114,11 +124,12 @@ model Agent {
   updatedAt       DateTime    @updatedAt
   lastActiveAt    DateTime?
 
-  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  conversations   Conversation[]
-  apiKeys         ApiKey[]
-  connectionsFrom AgentConnection[] @relation("FromAgent")
-  connectionsTo   AgentConnection[] @relation("ToAgent")
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversations      Conversation[]
+  apiKeys            ApiKey[]
+  connectionsFrom    AgentConnection[]   @relation("FromAgent")
+  connectionsTo      AgentConnection[]   @relation("ToAgent")
+  platformConnection PlatformConnection?
 
   @@unique([tenantId, slug])
   @@map("agents")
@@ -269,6 +280,23 @@ model AnalyticsSnapshot {
 
   @@unique([tenantId, agentId, date])
   @@map("analytics_snapshots")
+}
+
+model PlatformConnection {
+  id                 String    @id @default(cuid())
+  agentId            String    @unique
+  platform           Platform
+  pageId             String?
+  pageName           String?
+  accessToken        String?
+  webhookVerifyToken String    @default(cuid())
+  connectedAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@map("platform_connections")
 }
 
 model UsageRecord {
