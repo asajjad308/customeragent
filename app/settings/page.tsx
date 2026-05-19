@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Settings, Eye, EyeOff, RefreshCw, CreditCard, Shield, Bell, Palette } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Settings, Eye, EyeOff, RefreshCw, CreditCard, Shield, Bell, Palette, Cpu, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -20,6 +20,197 @@ import type { ThemeKey } from '@/store';
 
 function uuid() {
   return crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+type LlmProvider = 'groq' | 'openai' | 'anthropic';
+
+const PROVIDER_META: Record<LlmProvider, { label: string; placeholder: string; docsHint: string }> = {
+  groq:      { label: 'Groq',      placeholder: 'gsk_…',   docsHint: 'console.groq.com → API Keys' },
+  openai:    { label: 'OpenAI',    placeholder: 'sk-…',    docsHint: 'platform.openai.com → API Keys' },
+  anthropic: { label: 'Anthropic', placeholder: 'sk-ant-…',docsHint: 'console.anthropic.com → API Keys' },
+};
+
+interface StoredKey {
+  id: string;
+  provider: LlmProvider;
+  label: string;
+  keyPreview: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+function AiProvidersTab() {
+  const [keys, setKeys] = useState<StoredKey[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [provider, setProvider] = useState<LlmProvider>('groq');
+  const [label, setLabel] = useState('');
+  const [apiKey, setApiKey] = useState('');
+  const [showKey, setShowKey] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/tenant/llm-keys');
+      if (res.ok) setKeys(await res.json());
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function addKey() {
+    if (!label.trim() || !apiKey.trim()) return;
+    setSaving(true);
+    try {
+      const res = await fetch('/api/tenant/llm-keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider, label: label.trim(), key: apiKey.trim() }),
+      });
+      if (res.ok) {
+        toast.success('API key saved');
+        setLabel('');
+        setApiKey('');
+        await load();
+      } else {
+        const data = await res.json();
+        toast.error(data.error ?? 'Failed to save key');
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function toggleKey(id: string, isActive: boolean) {
+    const res = await fetch(`/api/tenant/llm-keys/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isActive: !isActive }),
+    });
+    if (res.ok) setKeys((prev) => prev.map((k) => k.id === id ? { ...k, isActive: !isActive } : k));
+  }
+
+  async function deleteKey(id: string) {
+    const res = await fetch(`/api/tenant/llm-keys/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      toast.success('Key removed');
+      setKeys((prev) => prev.filter((k) => k.id !== id));
+    }
+  }
+
+  const meta = PROVIDER_META[provider];
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Add Provider Key</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid gap-1.5">
+            <Label>Provider</Label>
+            <Select value={provider} onValueChange={(v) => setProvider(v as LlmProvider)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {(Object.keys(PROVIDER_META) as LlmProvider[]).map((p) => (
+                  <SelectItem key={p} value={p}>{PROVIDER_META[p].label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">{meta.docsHint}</p>
+          </div>
+          <div className="grid gap-1.5">
+            <Label>Label</Label>
+            <Input
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="e.g. Production"
+              aria-label="Key label"
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label>API Key</Label>
+            <div className="flex gap-2">
+              <Input
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder={meta.placeholder}
+                type={showKey ? 'text' : 'password'}
+                className="font-mono text-xs"
+                aria-label="API key value"
+              />
+              <Button variant="ghost" size="icon" onClick={() => setShowKey(!showKey)} aria-label="Toggle key visibility">
+                {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </Button>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            disabled={!label.trim() || !apiKey.trim() || saving}
+            onClick={addKey}
+            aria-label="Save API key"
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            {saving ? 'Saving…' : 'Save Key'}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Configured Keys</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="space-y-2">
+              {[1, 2].map((i) => <div key={i} className="h-12 rounded-lg bg-muted animate-pulse" />)}
+            </div>
+          ) : keys.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No keys configured yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {keys.map((k) => (
+                <div
+                  key={k.id}
+                  className="flex items-center gap-3 p-3 rounded-lg border border-border bg-background"
+                >
+                  <Cpu className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold">{PROVIDER_META[k.provider]?.label ?? k.provider}</span>
+                      <Badge variant="outline" className="text-[10px] py-0">{k.label}</Badge>
+                      {!k.isActive && <Badge variant="secondary" className="text-[10px] py-0">Disabled</Badge>}
+                    </div>
+                    <div className="text-[11px] font-mono text-muted-foreground truncate">{k.keyPreview}</div>
+                  </div>
+                  <Switch
+                    checked={k.isActive}
+                    onCheckedChange={() => toggleKey(k.id, k.isActive)}
+                    aria-label={k.isActive ? 'Disable key' : 'Enable key'}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => deleteKey(k.id)}
+                    aria-label="Delete key"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <p className="text-xs text-muted-foreground">
+        Keys are used by your agents based on the model selected — Groq keys for Llama/Mixtral models, OpenAI keys for GPT/o-series, Anthropic keys for Claude models. If no tenant key is found the platform fallback is used.
+      </p>
+    </div>
+  );
 }
 
 export default function SettingsPage() {
@@ -44,8 +235,12 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="general">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="ai-providers">
+            <Cpu className="w-3.5 h-3.5 md:hidden" />
+            <span className="hidden md:inline">AI Keys</span>
+          </TabsTrigger>
           <TabsTrigger value="appearance">
             <Palette className="w-3.5 h-3.5 md:hidden" />
             <span className="hidden md:inline">Appearance</span>
@@ -63,6 +258,11 @@ export default function SettingsPage() {
             <span className="hidden md:inline">Billing</span>
           </TabsTrigger>
         </TabsList>
+
+        {/* AI Providers */}
+        <TabsContent value="ai-providers" className="space-y-4 mt-4">
+          <AiProvidersTab />
+        </TabsContent>
 
         {/* General */}
         <TabsContent value="general" className="space-y-4 mt-4">

@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
-import { groq } from '@/lib/groq';
 import { prisma } from '@/lib/prisma';
+import { getLlmClient } from '@/lib/llm-client';
 import { buildSystemPrompt } from '@/lib/buildSystemPrompt';
 import {
   getAvailableSlots,
@@ -147,13 +147,6 @@ async function handleBookingAction(
 
 // ── Main POST handler ──────────────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
-  if (!process.env.GROQ_API_KEY) {
-    return new Response(JSON.stringify({ error: 'GROQ_API_KEY is not configured.' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
   try {
     const body = await request.json();
 
@@ -219,9 +212,103 @@ export async function POST(request: NextRequest) {
       tenantId = (body.tenantId as string | undefined) ?? null;
     }
 
+    const llm = await getLlmClient(tenantId, model);
+
+    if (!llm.apiKey) {
+      return new Response(
+        JSON.stringify({ error: `No API key configured for provider "${llm.provider}". Add one in Settings → AI Providers.` }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+
     const startTime = Date.now();
 
-    const stream = await groq.chat.completions.create({
+    // ── Anthropic streaming ──────────────────────────────────────────────────
+    if (llm.provider === 'anthropic') {
+      const anthropicMessages = chatMessages.map(({ role, content }) => ({
+        role: role as 'user' | 'assistant',
+        content,
+      }));
+
+      const stream = await llm.client.messages.stream({
+        model,
+        system: systemPrompt,
+        messages: anthropicMessages,
+        temperature,
+        max_tokens: maxTokens,
+      });
+
+      const encoder = new TextEncoder();
+      let fullContent = '';
+
+      const readable = new ReadableStream({
+        async start(controller) {
+          try {
+            for await (const chunk of stream) {
+              if (
+                chunk.type === 'content_block_delta' &&
+                chunk.delta.type === 'text_delta'
+              ) {
+                const content = chunk.delta.text;
+                if (content) {
+                  fullContent += content;
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+                }
+              }
+            }
+            controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+
+            if (conversationId && tenantId) {
+              const safeTenantId: string = tenantId;
+              const responseTimeMs = Date.now() - startTime;
+              const lastUserMsg = chatMessages[chatMessages.length - 1];
+              try {
+                await prisma.message.createMany({
+                  data: [
+                    { conversationId, role: 'user', content: lastUserMsg?.content ?? '' },
+                    { conversationId, role: 'assistant', content: fullContent, responseTimeMs },
+                  ],
+                });
+                const month = new Date().toISOString().slice(0, 7);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const agentIdForUsage = (agentId ?? null) as any;
+                await prisma.usageRecord.upsert({
+                  where: { tenantId_agentId_month: { tenantId: safeTenantId, agentId: agentIdForUsage, month } },
+                  create: { tenantId: safeTenantId, agentId: agentIdForUsage, month, messages: 1 },
+                  update: { messages: { increment: 1 } },
+                });
+                if (agentId) {
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  await (prisma.agent as any).update({
+                    where: { id: agentId },
+                    data: { lastActiveAt: new Date(), messageCount: { increment: 1 } },
+                  });
+                }
+              } catch (dbErr) {
+                console.error('DB persist error:', dbErr);
+              }
+            }
+          } catch (streamError) {
+            console.error('Anthropic stream error:', streamError);
+            controller.error(streamError);
+          } finally {
+            controller.close();
+          }
+        },
+      });
+
+      return new Response(readable, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive',
+          'Access-Control-Allow-Origin': '*',
+        },
+      });
+    }
+
+    // ── OpenAI-compatible streaming (Groq / OpenAI) ──────────────────────────
+    const stream = await llm.client.chat.completions.create({
       model,
       messages: [
         { role: 'system', content: systemPrompt },

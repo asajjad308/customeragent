@@ -57,8 +57,25 @@ model Tenant {
   settings      TenantSettings?
   integrations  Integration[]
   knowledgeBase KnowledgeBase[]
+  llmApiKeys    LlmApiKey[]
 
   @@map("tenants")
+}
+
+model LlmApiKey {
+  id        String   @id @default(cuid())
+  tenantId  String
+  provider  String
+  label     String
+  key       String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, provider, label])
+  @@map("llm_api_keys")
 }
 
 model User {
