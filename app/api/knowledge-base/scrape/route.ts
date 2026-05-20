@@ -21,8 +21,6 @@ function extractText($: cheerio.CheerioAPI): string {
   const chunks: string[] = [];
 
   $('h1, h2, h3, h4, p, li, td, th, blockquote, figcaption').each((_, el) => {
-    const tag = (el as cheerio.Element).tagName?.toLowerCase() ?? '';
-    if (SKIP_TAGS.has(tag)) return;
     const text = $(el).text().replace(/\s+/g, ' ').trim();
     if (text.length > 20) chunks.push(text);
   });

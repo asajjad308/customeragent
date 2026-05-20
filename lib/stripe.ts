@@ -8,7 +8,7 @@ export function getStripeClient(): Stripe {
   if (!key || key === 'sk_live_...' || key === 'sk_test_...') {
     throw new Error('STRIPE_SECRET_KEY is not configured. Add it to your .env file.');
   }
-  _stripe = new Stripe(key, { apiVersion: '2025-04-30.basil' });
+  _stripe = new Stripe(key, { apiVersion: '2026-04-22.dahlia' });
   return _stripe;
 }
 
