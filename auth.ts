@@ -113,7 +113,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
       return true;
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -122,6 +122,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.tenantSlug = u.tenantSlug;
         token.role = u.role;
         token.plan = u.plan;
+      }
+      if (trigger === 'update' && token.tenantId) {
+        const tenant = await prisma.tenant.findUnique({
+          where: { id: token.tenantId as string },
+          select: { plan: true, suspended: true },
+        });
+        if (tenant) token.plan = tenant.plan;
       }
       return token;
     },

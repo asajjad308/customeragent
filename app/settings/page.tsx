@@ -220,13 +220,20 @@ const PLAN_DETAILS = {
 };
 
 function BillingTab() {
-  const { data: session } = useSession();
+  const { data: session, update } = useSession();
   const { analytics } = useAppStore();
   const plan = (session?.user?.plan ?? 'free') as keyof typeof PLAN_DETAILS;
   const planDetails = PLAN_DETAILS[plan] ?? PLAN_DETAILS.free;
   const maxMessages = plan === 'free' ? 1000 : plan === 'pro' ? 10000 : Infinity;
   const usagePercent = isFinite(maxMessages) ? Math.min((analytics.totalMessages / maxMessages) * 100, 100) : 0;
   const [loading, setLoading] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('success') === '1') {
+      update();
+    }
+  }, [update]);
 
   async function upgrade(targetPlan: 'pro' | 'enterprise') {
     setLoading(targetPlan);
