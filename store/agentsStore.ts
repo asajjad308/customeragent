@@ -1,5 +1,13 @@
 import { create } from 'zustand';
 
+export type Platform =
+  | 'WEBSITE'
+  | 'FACEBOOK'
+  | 'INSTAGRAM'
+  | 'WHATSAPP'
+  | 'LINKEDIN'
+  | 'TWITTER';
+
 export type AgentType =
   | 'SUPPORT'
   | 'TECHNICAL'
@@ -41,6 +49,7 @@ export interface Agent {
   blockedWords?: string | null;
   createdAt: string;
   updatedAt: string;
+  platform: Platform;
   lastActiveAt?: string | null;
 }
 

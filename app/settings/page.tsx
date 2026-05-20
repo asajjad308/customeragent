@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { Settings, Eye, EyeOff, RefreshCw, CreditCard, Shield, Bell, Palette } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Settings, Eye, EyeOff, RefreshCw, CreditCard, Shield, Bell, Palette, Cpu, Plus, Trash2, Zap, Building2, CheckCircle } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -12,7 +13,6 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { useAppStore } from '@/store';
 import { themes } from '@/lib/themes';
@@ -22,11 +22,332 @@ function uuid() {
   return crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
+type LlmProvider = 'groq' | 'openai' | 'anthropic';
+
+const PROVIDER_META: Record<LlmProvider, { label: string; placeholder: string; docsHint: string }> = {
+  groq:      { label: 'Groq',      placeholder: 'gsk_…',   docsHint: 'console.groq.com → API Keys' },
+  openai:    { label: 'OpenAI',    placeholder: 'sk-…',    docsHint: 'platform.openai.com → API Keys' },
+  anthropic: { label: 'Anthropic', placeholder: 'sk-ant-…',docsHint: 'console.anthropic.com → API Keys' },
+};
+
+interface StoredKey {
+  id: string;
+  provider: LlmProvider;
+  label: string;
+  keyPreview: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+function AiProvidersTab() {
+  const [keys, setKeys] = useState<StoredKey[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [provider, setProvider] = useState<LlmProvider>('groq');
+  const [label, setLabel] = useState('');
+  const [apiKey, setApiKey] = useState('');
+  const [showKey, setShowKey] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/tenant/llm-keys');
+      if (res.ok) setKeys(await res.json());
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function addKey() {
+    if (!label.trim() || !apiKey.trim()) return;
+    setSaving(true);
+    try {
+      const res = await fetch('/api/tenant/llm-keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider, label: label.trim(), key: apiKey.trim() }),
+      });
+      if (res.ok) {
+        toast.success('API key saved');
+        setLabel('');
+        setApiKey('');
+        await load();
+      } else {
+        const data = await res.json();
+        toast.error(data.error ?? 'Failed to save key');
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function toggleKey(id: string, isActive: boolean) {
+    const res = await fetch(`/api/tenant/llm-keys/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isActive: !isActive }),
+    });
+    if (res.ok) setKeys((prev) => prev.map((k) => k.id === id ? { ...k, isActive: !isActive } : k));
+  }
+
+  async function deleteKey(id: string) {
+    const res = await fetch(`/api/tenant/llm-keys/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      toast.success('Key removed');
+      setKeys((prev) => prev.filter((k) => k.id !== id));
+    }
+  }
+
+  const meta = PROVIDER_META[provider];
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Add Provider Key</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid gap-1.5">
+            <Label>Provider</Label>
+            <Select value={provider} onValueChange={(v) => setProvider(v as LlmProvider)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {(Object.keys(PROVIDER_META) as LlmProvider[]).map((p) => (
+                  <SelectItem key={p} value={p}>{PROVIDER_META[p].label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">{meta.docsHint}</p>
+          </div>
+          <div className="grid gap-1.5">
+            <Label>Label</Label>
+            <Input
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="e.g. Production"
+              aria-label="Key label"
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label>API Key</Label>
+            <div className="flex gap-2">
+              <Input
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder={meta.placeholder}
+                type={showKey ? 'text' : 'password'}
+                className="font-mono text-xs"
+                aria-label="API key value"
+              />
+              <Button variant="ghost" size="icon" onClick={() => setShowKey(!showKey)} aria-label="Toggle key visibility">
+                {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </Button>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            disabled={!label.trim() || !apiKey.trim() || saving}
+            onClick={addKey}
+            aria-label="Save API key"
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            {saving ? 'Saving…' : 'Save Key'}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Configured Keys</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="space-y-2">
+              {[1, 2].map((i) => <div key={i} className="h-12 rounded-lg bg-muted animate-pulse" />)}
+            </div>
+          ) : keys.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No keys configured yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {keys.map((k) => (
+                <div
+                  key={k.id}
+                  className="flex items-center gap-3 p-3 rounded-lg border border-border bg-background"
+                >
+                  <Cpu className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold">{PROVIDER_META[k.provider]?.label ?? k.provider}</span>
+                      <Badge variant="outline" className="text-[10px] py-0">{k.label}</Badge>
+                      {!k.isActive && <Badge variant="secondary" className="text-[10px] py-0">Disabled</Badge>}
+                    </div>
+                    <div className="text-[11px] font-mono text-muted-foreground truncate">{k.keyPreview}</div>
+                  </div>
+                  <Switch
+                    checked={k.isActive}
+                    onCheckedChange={() => toggleKey(k.id, k.isActive)}
+                    aria-label={k.isActive ? 'Disable key' : 'Enable key'}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => deleteKey(k.id)}
+                    aria-label="Delete key"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <p className="text-xs text-muted-foreground">
+        Keys are used by your agents based on the model selected — Groq keys for Llama/Mixtral models, OpenAI keys for GPT/o-series, Anthropic keys for Claude models. If no tenant key is found the platform fallback is used.
+      </p>
+    </div>
+  );
+}
+
+const PLAN_DETAILS = {
+  free:       { label: 'Free',       price: '$0',   messages: '1,000',  agents: '1',       color: 'bg-slate-500' },
+  pro:        { label: 'Pro',        price: '$49',  messages: '10,000', agents: '5',       color: 'bg-indigo-500' },
+  enterprise: { label: 'Enterprise', price: '$149', messages: 'Unlimited', agents: 'Unlimited', color: 'bg-violet-600' },
+};
+
+function BillingTab() {
+  const { data: session } = useSession();
+  const { analytics } = useAppStore();
+  const plan = (session?.user?.plan ?? 'free') as keyof typeof PLAN_DETAILS;
+  const planDetails = PLAN_DETAILS[plan] ?? PLAN_DETAILS.free;
+  const maxMessages = plan === 'free' ? 1000 : plan === 'pro' ? 10000 : Infinity;
+  const usagePercent = isFinite(maxMessages) ? Math.min((analytics.totalMessages / maxMessages) * 100, 100) : 0;
+  const [loading, setLoading] = useState<string | null>(null);
+
+  async function upgrade(targetPlan: 'pro' | 'enterprise') {
+    setLoading(targetPlan);
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: targetPlan }),
+      });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+      else toast.error(data.error ?? 'Could not open checkout');
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  async function openPortal() {
+    setLoading('portal');
+    try {
+      const res = await fetch('/api/stripe/portal', { method: 'POST' });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+      else toast.error(data.error ?? 'Could not open billing portal');
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Current plan */}
+      <Card>
+        <CardContent className="pt-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="font-semibold text-lg">{planDetails.label} Plan</div>
+              <div className="text-sm text-muted-foreground">{planDetails.price}/month</div>
+            </div>
+            <Badge className={`${planDetails.color} text-white`}>{planDetails.label}</Badge>
+          </div>
+          <Separator />
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>Messages this month</span>
+              <span>{analytics.totalMessages.toLocaleString()} / {isFinite(maxMessages) ? maxMessages.toLocaleString() : '∞'}</span>
+            </div>
+            {isFinite(maxMessages) && (
+              <>
+                <Progress value={usagePercent} className="h-2" />
+                {usagePercent >= 80 && (
+                  <p className="text-xs text-orange-500">
+                    {Math.round(usagePercent)}% of quota used.{' '}
+                    {plan !== 'enterprise' && (
+                      <button className="underline font-medium" onClick={() => upgrade(plan === 'free' ? 'pro' : 'enterprise')}>
+                        Upgrade now
+                      </button>
+                    )}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+          {plan !== 'free' && (
+            <Button variant="outline" size="sm" onClick={openPortal} disabled={loading === 'portal'} aria-label="Manage billing">
+              <CreditCard className="w-4 h-4 mr-2" />
+              {loading === 'portal' ? 'Opening…' : 'Manage Billing & Invoices'}
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Plan comparison + upgrade */}
+      <div className="grid gap-3">
+        {([
+          { id: 'pro' as const,        icon: <Zap className="w-4 h-4" />,       features: ['5 agents', '10,000 msgs/mo', '500 KB entries', 'Analytics', 'All integrations'] },
+          { id: 'enterprise' as const, icon: <Building2 className="w-4 h-4" />, features: ['Unlimited agents', 'Unlimited msgs', 'Unlimited KB', 'Priority support', 'Custom domains'] },
+        ]).map(({ id, icon, features }) => {
+          const d = PLAN_DETAILS[id];
+          const isCurrent = plan === id;
+          return (
+            <Card key={id} className={isCurrent ? 'border-indigo-500 border-2' : ''}>
+              <CardContent className="pt-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 font-semibold">
+                    {icon} {d.label}
+                  </div>
+                  <div className="text-sm font-bold">{d.price}<span className="text-muted-foreground font-normal">/mo</span></div>
+                </div>
+                <ul className="space-y-1">
+                  {features.map((f) => (
+                    <li key={f} className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0" /> {f}
+                    </li>
+                  ))}
+                </ul>
+                {isCurrent ? (
+                  <Button className="w-full" variant="outline" disabled aria-label="Current plan">Current plan</Button>
+                ) : (
+                  <Button
+                    className="w-full"
+                    onClick={() => upgrade(id)}
+                    disabled={loading === id || (id === 'pro' && plan === 'enterprise')}
+                    aria-label={`Upgrade to ${d.label}`}
+                  >
+                    {loading === id ? 'Redirecting…' : `Upgrade to ${d.label}`}
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const { settings, theme, updateSettings, updateTheme, analytics } = useAppStore();
   const [showApiKey, setShowApiKey] = useState(false);
   const [newWord, setNewWord] = useState('');
-  const [showBilling, setShowBilling] = useState(false);
 
   const save = (updates: Parameters<typeof updateSettings>[0]) => {
     updateSettings(updates);
@@ -44,8 +365,12 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="general">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="ai-providers">
+            <Cpu className="w-3.5 h-3.5 md:hidden" />
+            <span className="hidden md:inline">AI Keys</span>
+          </TabsTrigger>
           <TabsTrigger value="appearance">
             <Palette className="w-3.5 h-3.5 md:hidden" />
             <span className="hidden md:inline">Appearance</span>
@@ -63,6 +388,11 @@ export default function SettingsPage() {
             <span className="hidden md:inline">Billing</span>
           </TabsTrigger>
         </TabsList>
+
+        {/* AI Providers */}
+        <TabsContent value="ai-providers" className="space-y-4 mt-4">
+          <AiProvidersTab />
+        </TabsContent>
 
         {/* General */}
         <TabsContent value="general" className="space-y-4 mt-4">
@@ -298,96 +628,9 @@ export default function SettingsPage() {
 
         {/* Billing */}
         <TabsContent value="billing" className="space-y-4 mt-4">
-          <Card>
-            <CardContent className="pt-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-semibold">Pro Plan</div>
-                  <div className="text-sm text-muted-foreground">$49 / month</div>
-                </div>
-                <Badge className="bg-indigo-500 text-white">Active</Badge>
-              </div>
-              <Separator />
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Messages used</span>
-                  <span>{analytics.totalMessages.toLocaleString()} / 10,000</span>
-                </div>
-                <Progress value={usagePercent} className="h-2" />
-                {usagePercent > 80 && (
-                  <p className="text-xs text-orange-500">You're using {Math.round(usagePercent)}% of your quota.{' '}
-                    <button className="underline" onClick={() => setShowBilling(true)}>Upgrade plan</button>
-                  </p>
-                )}
-              </div>
-              <Separator />
-              {/* Plan comparison */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-muted-foreground">
-                      <th className="text-left pb-2">Feature</th>
-                      <th className="text-center pb-2">Free</th>
-                      <th className="text-center pb-2 text-indigo-500">Pro</th>
-                      <th className="text-center pb-2">Enterprise</th>
-                    </tr>
-                  </thead>
-                  <tbody className="space-y-1">
-                    {[
-                      ['Messages/mo', '500', '10,000', 'Unlimited'],
-                      ['Bots', '1', '5', 'Unlimited'],
-                      ['KB entries', '10', '500', 'Unlimited'],
-                      ['Analytics', '—', '✓', '✓'],
-                      ['Integrations', '—', '✓', '✓'],
-                      ['Priority support', '—', '—', '✓'],
-                    ].map(([f, free, pro, ent]) => (
-                      <tr key={f} className="border-t border-border">
-                        <td className="py-1.5 text-muted-foreground">{f}</td>
-                        <td className="text-center py-1.5">{free}</td>
-                        <td className="text-center py-1.5 text-indigo-500 font-medium">{pro}</td>
-                        <td className="text-center py-1.5">{ent}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <Button className="w-full" onClick={() => setShowBilling(true)} aria-label="Upgrade plan">
-                <CreditCard className="w-4 h-4 mr-2" />
-                Upgrade Plan
-              </Button>
-            </CardContent>
-          </Card>
+          <BillingTab />
         </TabsContent>
       </Tabs>
-
-      {/* Mock Stripe dialog */}
-      <Dialog open={showBilling} onOpenChange={setShowBilling}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Upgrade to Enterprise</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="grid gap-1.5">
-              <Label>Card Number</Label>
-              <Input placeholder="4242 4242 4242 4242" maxLength={19} aria-label="Card number" />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label>Expiry</Label>
-                <Input placeholder="MM/YY" maxLength={5} aria-label="Card expiry" />
-              </div>
-              <div className="grid gap-1.5">
-                <Label>CVC</Label>
-                <Input placeholder="123" maxLength={4} type="password" aria-label="Card CVC" />
-              </div>
-            </div>
-            <Button className="w-full" onClick={() => { setShowBilling(false); toast.success('Payment UI demo — no real charge made!'); }} aria-label="Confirm payment">
-              Pay $149/month
-            </Button>
-            <p className="text-xs text-muted-foreground text-center">Demo only — no real payment is processed</p>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

@@ -30,16 +30,30 @@ enum WidgetTheme {
   SOFT_AURORA
 }
 
+enum Platform {
+  WEBSITE
+  FACEBOOK
+  INSTAGRAM
+  WHATSAPP
+  LINKEDIN
+  TWITTER
+}
+
 model Tenant {
-  id           String   @id @default(cuid())
-  name         String
-  slug         String   @unique
-  plan         String   @default("free")
-  email        String   @unique
-  logoUrl      String?
-  primaryColor String   @default("#6366F1")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                   String    @id @default(cuid())
+  name                 String
+  slug                 String    @unique
+  plan                 String    @default("free")
+  email                String    @unique
+  logoUrl              String?
+  primaryColor         String    @default("#6366F1")
+  suspended            Boolean   @default(false)
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?
+  subscriptionStatus   String    @default("inactive")
+  trialEndsAt          DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   users         User[]
   agents        Agent[]
@@ -48,21 +62,42 @@ model Tenant {
   settings      TenantSettings?
   integrations  Integration[]
   knowledgeBase KnowledgeBase[]
+  llmApiKeys    LlmApiKey[]
 
   @@map("tenants")
 }
 
+model LlmApiKey {
+  id        String   @id @default(cuid())
+  tenantId  String
+  provider  String
+  label     String
+  key       String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, provider, label])
+  @@map("llm_api_keys")
+}
+
 model User {
-  id          String    @id @default(cuid())
-  tenantId    String
-  email       String
-  name        String
-  password    String
-  role        String    @default("member")
-  avatarUrl   String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  lastLoginAt DateTime?
+  id                 String    @id @default(cuid())
+  tenantId           String
+  email              String
+  name               String
+  password           String
+  role               String    @default("member")
+  avatarUrl          String?
+  emailVerified      Boolean   @default(false)
+  verifyToken        String?
+  resetToken         String?
+  resetTokenExpiry   DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  lastLoginAt        DateTime?
 
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   sessions Session[]
@@ -107,6 +142,7 @@ model Agent {
   allowedDomains  String?
   maxMsgPerHour   Int         @default(50)
   blockedWords    String?
+  platform        Platform    @default(WEBSITE)
   sessions        Int         @default(0)
   messageCount    Int         @default(0)
   satisfaction    Float?
@@ -114,11 +150,12 @@ model Agent {
   updatedAt       DateTime    @updatedAt
   lastActiveAt    DateTime?
 
-  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  conversations   Conversation[]
-  apiKeys         ApiKey[]
-  connectionsFrom AgentConnection[] @relation("FromAgent")
-  connectionsTo   AgentConnection[] @relation("ToAgent")
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversations      Conversation[]
+  apiKeys            ApiKey[]
+  connectionsFrom    AgentConnection[]   @relation("FromAgent")
+  connectionsTo      AgentConnection[]   @relation("ToAgent")
+  platformConnection PlatformConnection?
 
   @@unique([tenantId, slug])
   @@map("agents")
@@ -269,6 +306,23 @@ model AnalyticsSnapshot {
 
   @@unique([tenantId, agentId, date])
   @@map("analytics_snapshots")
+}
+
+model PlatformConnection {
+  id                 String    @id @default(cuid())
+  agentId            String    @unique
+  platform           Platform
+  pageId             String?
+  pageName           String?
+  accessToken        String?
+  webhookVerifyToken String    @default(cuid())
+  connectedAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@map("platform_connections")
 }
 
 model UsageRecord {

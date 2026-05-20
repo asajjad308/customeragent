@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server';
-import { groq } from '@/lib/groq';
 import { prisma } from '@/lib/prisma';
+import { getLlmClient } from '@/lib/llm-client';
 import { buildSystemPrompt } from '@/lib/buildSystemPrompt';
+import { getPlanLimits } from '@/lib/plans';
 import {
   getAvailableSlots,
   createEvent,
@@ -147,13 +148,6 @@ async function handleBookingAction(
 
 // ── Main POST handler ──────────────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
-  if (!process.env.GROQ_API_KEY) {
-    return new Response(JSON.stringify({ error: 'GROQ_API_KEY is not configured.' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
   try {
     const body = await request.json();
 
@@ -219,9 +213,135 @@ export async function POST(request: NextRequest) {
       tenantId = (body.tenantId as string | undefined) ?? null;
     }
 
+    // ── Suspension + quota check ───────────────────────────────────────────────
+    if (tenantId) {
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { plan: true, suspended: true },
+      });
+
+      if (tenant?.suspended) {
+        return new Response(JSON.stringify({ error: 'Account suspended. Contact support.' }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (tenant) {
+        const limits = getPlanLimits(tenant.plan);
+        if (isFinite(limits.maxMessagesPerMonth)) {
+          const month = new Date().toISOString().slice(0, 7);
+          const usage = await prisma.usageRecord.findFirst({
+            where: { tenantId, month },
+            select: { messages: true },
+          });
+          if ((usage?.messages ?? 0) >= limits.maxMessagesPerMonth) {
+            return new Response(
+              JSON.stringify({ error: 'Monthly message limit reached. Upgrade your plan to continue.' }),
+              { status: 429, headers: { 'Content-Type': 'application/json' } },
+            );
+          }
+        }
+      }
+    }
+
+    const llm = await getLlmClient(tenantId, model);
+
+    if (!llm.apiKey) {
+      return new Response(
+        JSON.stringify({ error: `No API key configured for provider "${llm.provider}". Add one in Settings → AI Providers.` }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+
     const startTime = Date.now();
 
-    const stream = await groq.chat.completions.create({
+    // ── Anthropic streaming ──────────────────────────────────────────────────
+    if (llm.provider === 'anthropic') {
+      const anthropicMessages = chatMessages.map(({ role, content }) => ({
+        role: role as 'user' | 'assistant',
+        content,
+      }));
+
+      const stream = await llm.client.messages.stream({
+        model,
+        system: systemPrompt,
+        messages: anthropicMessages,
+        temperature,
+        max_tokens: maxTokens,
+      });
+
+      const encoder = new TextEncoder();
+      let fullContent = '';
+
+      const readable = new ReadableStream({
+        async start(controller) {
+          try {
+            for await (const chunk of stream) {
+              if (
+                chunk.type === 'content_block_delta' &&
+                chunk.delta.type === 'text_delta'
+              ) {
+                const content = chunk.delta.text;
+                if (content) {
+                  fullContent += content;
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+                }
+              }
+            }
+            controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+
+            if (conversationId && tenantId) {
+              const safeTenantId: string = tenantId;
+              const responseTimeMs = Date.now() - startTime;
+              const lastUserMsg = chatMessages[chatMessages.length - 1];
+              try {
+                await prisma.message.createMany({
+                  data: [
+                    { conversationId, role: 'user', content: lastUserMsg?.content ?? '' },
+                    { conversationId, role: 'assistant', content: fullContent, responseTimeMs },
+                  ],
+                });
+                const month = new Date().toISOString().slice(0, 7);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const agentIdForUsage = (agentId ?? null) as any;
+                await prisma.usageRecord.upsert({
+                  where: { tenantId_agentId_month: { tenantId: safeTenantId, agentId: agentIdForUsage, month } },
+                  create: { tenantId: safeTenantId, agentId: agentIdForUsage, month, messages: 1 },
+                  update: { messages: { increment: 1 } },
+                });
+                if (agentId) {
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  await (prisma.agent as any).update({
+                    where: { id: agentId },
+                    data: { lastActiveAt: new Date(), messageCount: { increment: 1 } },
+                  });
+                }
+              } catch (dbErr) {
+                console.error('DB persist error:', dbErr);
+              }
+            }
+          } catch (streamError) {
+            console.error('Anthropic stream error:', streamError);
+            controller.error(streamError);
+          } finally {
+            controller.close();
+          }
+        },
+      });
+
+      return new Response(readable, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive',
+          'Access-Control-Allow-Origin': '*',
+        },
+      });
+    }
+
+    // ── OpenAI-compatible streaming (Groq / OpenAI) ──────────────────────────
+    const stream = await llm.client.chat.completions.create({
       model,
       messages: [
         { role: 'system', content: systemPrompt },
@@ -309,7 +429,7 @@ export async function POST(request: NextRequest) {
               const month = new Date().toISOString().slice(0, 7);
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const agentIdForUsage = (agentId ?? null) as any;
-              await prisma.usageRecord.upsert({
+              const usage = await prisma.usageRecord.upsert({
                 where:  { tenantId_agentId_month: { tenantId: safeTenantId, agentId: agentIdForUsage, month } },
                 create: { tenantId: safeTenantId, agentId: agentIdForUsage, month, messages: 1 },
                 update: { messages: { increment: 1 } },
@@ -320,6 +440,21 @@ export async function POST(request: NextRequest) {
                   where: { id: agentId },
                   data:  { lastActiveAt: new Date(), messageCount: { increment: 1 } },
                 });
+              }
+              // 80% usage warning email (fire-and-forget, once per threshold crossing)
+              const tenant80 = await prisma.tenant.findUnique({
+                where: { id: safeTenantId },
+                select: { plan: true, email: true, name: true },
+              });
+              if (tenant80) {
+                const limits = getPlanLimits(tenant80.plan);
+                if (isFinite(limits.maxMessagesPerMonth)) {
+                  const pct = (usage.messages / limits.maxMessagesPerMonth) * 100;
+                  if (pct >= 80 && pct < 81) {
+                    const { sendUsageWarningEmail } = await import('@/lib/email');
+                    sendUsageWarningEmail(tenant80.email, tenant80.name, 80).catch(() => {});
+                  }
+                }
               }
             } catch (dbErr) {
               console.error('DB persist error:', dbErr);

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { z } from 'zod';
+import { sendWelcomeEmail, sendEmailVerification } from '@/lib/email';
 
 const schema = z.object({
   name: z.string().min(1),
@@ -11,10 +13,7 @@ const schema = z.object({
 });
 
 function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
 export async function POST(req: NextRequest) {
@@ -40,8 +39,9 @@ export async function POST(req: NextRequest) {
     }
 
     const hashed = await bcrypt.hash(password, 12);
+    const verifyToken = crypto.randomBytes(32).toString('hex');
 
-    const tenant = await prisma.tenant.create({
+    await prisma.tenant.create({
       data: {
         name: company,
         slug,
@@ -52,25 +52,28 @@ export async function POST(req: NextRequest) {
             name,
             password: hashed,
             role: 'owner',
+            verifyToken,
           },
         },
         agents: {
           create: {
             name: 'Support Agent',
             slug: 'support-agent',
-            systemPrompt: 'You are a helpful customer support assistant. Assist users with their questions clearly and concisely. Always be empathetic.',
+            systemPrompt: 'You are a helpful customer support assistant for {{company_name}}. Assist users with their questions clearly and concisely. Always be empathetic.',
             greeting: 'Hi! How can I help you today?',
           },
         },
-        settings: {
-          create: {
-            companyName: company,
-          },
-        },
+        settings: { create: { companyName: company } },
       },
     });
 
-    return NextResponse.json({ ok: true, tenantId: tenant.id }, { status: 201 });
+    // Fire-and-forget — don't block signup on email failures
+    Promise.all([
+      sendWelcomeEmail(email, name),
+      sendEmailVerification(email, verifyToken),
+    ]).catch((err) => console.error('[email] post-register send error:', err));
+
+    return NextResponse.json({ ok: true }, { status: 201 });
   } catch (err) {
     console.error('Register error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
