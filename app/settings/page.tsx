@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { Settings, Eye, EyeOff, RefreshCw, CreditCard, Shield, Bell, Palette, Cpu, Plus, Trash2, Zap, Building2, CheckCircle } from 'lucide-react';
-import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -220,20 +219,18 @@ const PLAN_DETAILS = {
 };
 
 function BillingTab() {
-  const { data: session, update } = useSession();
   const { analytics } = useAppStore();
-  const plan = (session?.user?.plan ?? 'free') as keyof typeof PLAN_DETAILS;
-  const planDetails = PLAN_DETAILS[plan] ?? PLAN_DETAILS.free;
+  const [plan, setPlan] = useState<string>('free');
+  const planDetails = PLAN_DETAILS[plan as keyof typeof PLAN_DETAILS] ?? PLAN_DETAILS.free;
   const maxMessages = plan === 'free' ? 1000 : plan === 'pro' ? 10000 : Infinity;
   const usagePercent = isFinite(maxMessages) ? Math.min((analytics.totalMessages / maxMessages) * 100, 100) : 0;
   const [loading, setLoading] = useState<string | null>(null);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('success') === '1') {
-      update();
-    }
-  }, [update]);
+    fetch('/api/tenant/billing')
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d?.plan) setPlan(d.plan); });
+  }, []);
 
   async function upgrade(targetPlan: 'pro' | 'enterprise') {
     setLoading(targetPlan);
