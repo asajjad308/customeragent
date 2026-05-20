@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Toaster } from '@/components/ui/sonner';
+import { SessionProvider } from 'next-auth/react';
 import "./globals.css";
 
 const inter = Inter({
@@ -36,10 +37,12 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: darkModeScript }} />
       </head>
       <body className="min-h-full flex flex-col">
-        <TooltipProvider>
-          {children}
-          <Toaster />
-        </TooltipProvider>
+        <SessionProvider>
+          <TooltipProvider>
+            {children}
+            <Toaster />
+          </TooltipProvider>
+        </SessionProvider>
       </body>
     </html>
   );

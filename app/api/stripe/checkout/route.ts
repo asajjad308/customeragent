@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { stripe, STRIPE_PLANS } from '@/lib/stripe';
+import { getStripeClient, STRIPE_PLANS } from '@/lib/stripe';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/tenant';
 import { z } from 'zod';
@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
   });
 
   // Create or reuse Stripe customer
+  const stripe = getStripeClient();
   let customerId = tenant?.stripeCustomerId;
   if (!customerId) {
     const customer = await stripe.customers.create({

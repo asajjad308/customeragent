@@ -1,9 +1,8 @@
-import { auth } from '@/auth';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { decode } from 'next-auth/jwt';
 
 // ── In-memory rate limiter ─────────────────────────────────────────────────
-// Works per-instance (single-region). For multi-region deploys swap for Redis.
 const store = new Map<string, { count: number; resetAt: number }>();
 
 function checkRate(key: string, limit: number, windowMs: number): boolean {
@@ -15,7 +14,6 @@ function checkRate(key: string, limit: number, windowMs: number): boolean {
   }
   if (entry.count >= limit) return false;
   entry.count++;
-  // Lazy cleanup: prune a random stale entry on each write
   if (store.size > 5000) {
     for (const [k, v] of store) {
       if (Date.now() > v.resetAt) { store.delete(k); break; }
@@ -28,9 +26,9 @@ const PUBLIC_EXACT = ['/', '/pricing'];
 const PUBLIC_PATHS = ['/login', '/register', '/forgot-password', '/reset-password', '/embed.js', '/widget', '/suspended'];
 const API_PUBLIC   = ['/api/auth', '/api/bot-config', '/api/chat', '/api/feedback', '/api/register', '/api/embed', '/api/stripe/webhook'];
 
-export default auth((req) => {
-  const { pathname } = req.nextUrl;
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0] ?? 'unknown';
+export default async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0] ?? 'unknown';
 
   // ── Rate limiting ──────────────────────────────────────────────────────────
   if (pathname.startsWith('/api/auth') || pathname === '/api/register') {
@@ -70,29 +68,42 @@ export default auth((req) => {
 
   if (isPublic) return NextResponse.next();
 
+  // ── Decode session from JWT cookie ─────────────────────────────────────────
+  const secret = process.env.AUTH_SECRET;
+  const cookieName = process.env.NODE_ENV === 'production'
+    ? '__Secure-authjs.session-token'
+    : 'authjs.session-token';
+
+  const token = secret
+    ? await decode({
+        token: request.cookies.get(cookieName)?.value,
+        secret,
+        salt: cookieName,
+      }).catch(() => null)
+    : null;
+
   // ── Auth gate ──────────────────────────────────────────────────────────────
-  if (!req.auth) {
-    const loginUrl = new URL('/login', req.nextUrl.origin);
+  if (!token) {
+    const loginUrl = new URL('/login', request.nextUrl.origin);
     loginUrl.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(loginUrl);
   }
 
   // ── Suspension check ───────────────────────────────────────────────────────
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if ((req.auth.user as any)?.suspended && pathname !== '/suspended') {
-    return NextResponse.redirect(new URL('/suspended', req.nextUrl.origin));
+  if ((token as any)?.suspended && pathname !== '/suspended') {
+    return NextResponse.redirect(new URL('/suspended', request.nextUrl.origin));
   }
 
   // ── Admin gate ─────────────────────────────────────────────────────────────
   if (pathname.startsWith('/admin')) {
     const adminEmails = (process.env.ADMIN_EMAILS ?? '').split(',').map((e) => e.trim()).filter(Boolean);
-    if (!adminEmails.includes(req.auth.user?.email ?? '')) {
-      return NextResponse.redirect(new URL('/dashboard', req.nextUrl.origin));
+    if (!adminEmails.includes((token.email as string) ?? '')) {
+      return NextResponse.redirect(new URL('/dashboard', request.nextUrl.origin));
     }
   }
 
   return NextResponse.next();
-}) as unknown as (req: NextRequest) => Response | Promise<Response>;
+}
 
 export const config = {
   matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],

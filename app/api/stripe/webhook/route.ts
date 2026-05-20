@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { stripe, planFromPriceId } from '@/lib/stripe';
+import { getStripeClient, planFromPriceId } from '@/lib/stripe';
 import { prisma } from '@/lib/prisma';
 import { sendUsageWarningEmail } from '@/lib/email';
 import type Stripe from 'stripe';
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
 
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET!);
+    event = getStripeClient().webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET!);
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error';
     return NextResponse.json({ error: `Webhook signature invalid: ${msg}` }, { status: 400 });
