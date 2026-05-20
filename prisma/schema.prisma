@@ -40,15 +40,20 @@ enum Platform {
 }
 
 model Tenant {
-  id           String   @id @default(cuid())
-  name         String
-  slug         String   @unique
-  plan         String   @default("free")
-  email        String   @unique
-  logoUrl      String?
-  primaryColor String   @default("#6366F1")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                   String    @id @default(cuid())
+  name                 String
+  slug                 String    @unique
+  plan                 String    @default("free")
+  email                String    @unique
+  logoUrl              String?
+  primaryColor         String    @default("#6366F1")
+  suspended            Boolean   @default(false)
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?
+  subscriptionStatus   String    @default("inactive")
+  trialEndsAt          DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   users         User[]
   agents        Agent[]
@@ -79,16 +84,20 @@ model LlmApiKey {
 }
 
 model User {
-  id          String    @id @default(cuid())
-  tenantId    String
-  email       String
-  name        String
-  password    String
-  role        String    @default("member")
-  avatarUrl   String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  lastLoginAt DateTime?
+  id                 String    @id @default(cuid())
+  tenantId           String
+  email              String
+  name               String
+  password           String
+  role               String    @default("member")
+  avatarUrl          String?
+  emailVerified      Boolean   @default(false)
+  verifyToken        String?
+  resetToken         String?
+  resetTokenExpiry   DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  lastLoginAt        DateTime?
 
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   sessions Session[]

@@ -1,13 +1,66 @@
 import { auth } from '@/auth';
 import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+// ── In-memory rate limiter ─────────────────────────────────────────────────
+// Works per-instance (single-region). For multi-region deploys swap for Redis.
+const store = new Map<string, { count: number; resetAt: number }>();
+
+function checkRate(key: string, limit: number, windowMs: number): boolean {
+  const now = Date.now();
+  const entry = store.get(key);
+  if (!entry || now > entry.resetAt) {
+    store.set(key, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+  if (entry.count >= limit) return false;
+  entry.count++;
+  // Lazy cleanup: prune a random stale entry on each write
+  if (store.size > 5000) {
+    for (const [k, v] of store) {
+      if (Date.now() > v.resetAt) { store.delete(k); break; }
+    }
+  }
+  return true;
+}
 
 const PUBLIC_EXACT = ['/', '/pricing'];
-const PUBLIC_PATHS = ['/login', '/register', '/embed.js', '/widget'];
-const API_PUBLIC = ['/api/auth', '/api/bot-config', '/api/chat', '/api/feedback', '/api/register'];
+const PUBLIC_PATHS = ['/login', '/register', '/forgot-password', '/reset-password', '/embed.js', '/widget', '/suspended'];
+const API_PUBLIC   = ['/api/auth', '/api/bot-config', '/api/chat', '/api/feedback', '/api/register', '/api/embed', '/api/stripe/webhook'];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0] ?? 'unknown';
 
+  // ── Rate limiting ──────────────────────────────────────────────────────────
+  if (pathname.startsWith('/api/auth') || pathname === '/api/register') {
+    if (!checkRate(`auth:${ip}`, 10, 60_000)) {
+      return new NextResponse(JSON.stringify({ error: 'Too many requests' }), {
+        status: 429,
+        headers: { 'Content-Type': 'application/json', 'Retry-After': '60' },
+      });
+    }
+  }
+
+  if (pathname.startsWith('/api/chat')) {
+    if (!checkRate(`chat:${ip}`, 60, 60_000)) {
+      return new NextResponse(JSON.stringify({ error: 'Rate limit exceeded. Try again in a minute.' }), {
+        status: 429,
+        headers: { 'Content-Type': 'application/json', 'Retry-After': '60' },
+      });
+    }
+  }
+
+  if (pathname === '/api/auth/forgot-password') {
+    if (!checkRate(`reset:${ip}`, 5, 15 * 60_000)) {
+      return new NextResponse(JSON.stringify({ error: 'Too many requests. Try again later.' }), {
+        status: 429,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+  }
+
+  // ── Public route pass-through ──────────────────────────────────────────────
   const isPublic =
     PUBLIC_EXACT.includes(pathname) ||
     PUBLIC_PATHS.some((p) => pathname.startsWith(p)) ||
@@ -17,14 +70,29 @@ export default auth((req) => {
 
   if (isPublic) return NextResponse.next();
 
+  // ── Auth gate ──────────────────────────────────────────────────────────────
   if (!req.auth) {
     const loginUrl = new URL('/login', req.nextUrl.origin);
     loginUrl.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(loginUrl);
   }
 
+  // ── Suspension check ───────────────────────────────────────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if ((req.auth.user as any)?.suspended && pathname !== '/suspended') {
+    return NextResponse.redirect(new URL('/suspended', req.nextUrl.origin));
+  }
+
+  // ── Admin gate ─────────────────────────────────────────────────────────────
+  if (pathname.startsWith('/admin')) {
+    const adminEmails = (process.env.ADMIN_EMAILS ?? '').split(',').map((e) => e.trim()).filter(Boolean);
+    if (!adminEmails.includes(req.auth.user?.email ?? '')) {
+      return NextResponse.redirect(new URL('/dashboard', req.nextUrl.origin));
+    }
+  }
+
   return NextResponse.next();
-});
+}) as unknown as (req: NextRequest) => Response | Promise<Response>;
 
 export const config = {
   matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],

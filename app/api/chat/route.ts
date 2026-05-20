@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getLlmClient } from '@/lib/llm-client';
 import { buildSystemPrompt } from '@/lib/buildSystemPrompt';
+import { getPlanLimits } from '@/lib/plans';
 import {
   getAvailableSlots,
   createEvent,
@@ -212,6 +213,38 @@ export async function POST(request: NextRequest) {
       tenantId = (body.tenantId as string | undefined) ?? null;
     }
 
+    // ── Suspension + quota check ───────────────────────────────────────────────
+    if (tenantId) {
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { plan: true, suspended: true },
+      });
+
+      if (tenant?.suspended) {
+        return new Response(JSON.stringify({ error: 'Account suspended. Contact support.' }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (tenant) {
+        const limits = getPlanLimits(tenant.plan);
+        if (isFinite(limits.maxMessagesPerMonth)) {
+          const month = new Date().toISOString().slice(0, 7);
+          const usage = await prisma.usageRecord.findFirst({
+            where: { tenantId, month },
+            select: { messages: true },
+          });
+          if ((usage?.messages ?? 0) >= limits.maxMessagesPerMonth) {
+            return new Response(
+              JSON.stringify({ error: 'Monthly message limit reached. Upgrade your plan to continue.' }),
+              { status: 429, headers: { 'Content-Type': 'application/json' } },
+            );
+          }
+        }
+      }
+    }
+
     const llm = await getLlmClient(tenantId, model);
 
     if (!llm.apiKey) {
@@ -396,7 +429,7 @@ export async function POST(request: NextRequest) {
               const month = new Date().toISOString().slice(0, 7);
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const agentIdForUsage = (agentId ?? null) as any;
-              await prisma.usageRecord.upsert({
+              const usage = await prisma.usageRecord.upsert({
                 where:  { tenantId_agentId_month: { tenantId: safeTenantId, agentId: agentIdForUsage, month } },
                 create: { tenantId: safeTenantId, agentId: agentIdForUsage, month, messages: 1 },
                 update: { messages: { increment: 1 } },
@@ -407,6 +440,21 @@ export async function POST(request: NextRequest) {
                   where: { id: agentId },
                   data:  { lastActiveAt: new Date(), messageCount: { increment: 1 } },
                 });
+              }
+              // 80% usage warning email (fire-and-forget, once per threshold crossing)
+              const tenant80 = await prisma.tenant.findUnique({
+                where: { id: safeTenantId },
+                select: { plan: true, email: true, name: true },
+              });
+              if (tenant80) {
+                const limits = getPlanLimits(tenant80.plan);
+                if (isFinite(limits.maxMessagesPerMonth)) {
+                  const pct = (usage.messages / limits.maxMessagesPerMonth) * 100;
+                  if (pct >= 80 && pct < 81) {
+                    const { sendUsageWarningEmail } = await import('@/lib/email');
+                    sendUsageWarningEmail(tenant80.email, tenant80.name, 80).catch(() => {});
+                  }
+                }
               }
             } catch (dbErr) {
               console.error('DB persist error:', dbErr);

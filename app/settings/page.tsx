@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, Eye, EyeOff, RefreshCw, CreditCard, Shield, Bell, Palette, Cpu, Plus, Trash2 } from 'lucide-react';
+import { Settings, Eye, EyeOff, RefreshCw, CreditCard, Shield, Bell, Palette, Cpu, Plus, Trash2, Zap, Building2, CheckCircle } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -12,7 +13,6 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { useAppStore } from '@/store';
 import { themes } from '@/lib/themes';
@@ -213,11 +213,141 @@ function AiProvidersTab() {
   );
 }
 
+const PLAN_DETAILS = {
+  free:       { label: 'Free',       price: '$0',   messages: '1,000',  agents: '1',       color: 'bg-slate-500' },
+  pro:        { label: 'Pro',        price: '$49',  messages: '10,000', agents: '5',       color: 'bg-indigo-500' },
+  enterprise: { label: 'Enterprise', price: '$149', messages: 'Unlimited', agents: 'Unlimited', color: 'bg-violet-600' },
+};
+
+function BillingTab() {
+  const { data: session } = useSession();
+  const { analytics } = useAppStore();
+  const plan = (session?.user?.plan ?? 'free') as keyof typeof PLAN_DETAILS;
+  const planDetails = PLAN_DETAILS[plan] ?? PLAN_DETAILS.free;
+  const maxMessages = plan === 'free' ? 1000 : plan === 'pro' ? 10000 : Infinity;
+  const usagePercent = isFinite(maxMessages) ? Math.min((analytics.totalMessages / maxMessages) * 100, 100) : 0;
+  const [loading, setLoading] = useState<string | null>(null);
+
+  async function upgrade(targetPlan: 'pro' | 'enterprise') {
+    setLoading(targetPlan);
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: targetPlan }),
+      });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+      else toast.error(data.error ?? 'Could not open checkout');
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  async function openPortal() {
+    setLoading('portal');
+    try {
+      const res = await fetch('/api/stripe/portal', { method: 'POST' });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+      else toast.error(data.error ?? 'Could not open billing portal');
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Current plan */}
+      <Card>
+        <CardContent className="pt-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="font-semibold text-lg">{planDetails.label} Plan</div>
+              <div className="text-sm text-muted-foreground">{planDetails.price}/month</div>
+            </div>
+            <Badge className={`${planDetails.color} text-white`}>{planDetails.label}</Badge>
+          </div>
+          <Separator />
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>Messages this month</span>
+              <span>{analytics.totalMessages.toLocaleString()} / {isFinite(maxMessages) ? maxMessages.toLocaleString() : '∞'}</span>
+            </div>
+            {isFinite(maxMessages) && (
+              <>
+                <Progress value={usagePercent} className="h-2" />
+                {usagePercent >= 80 && (
+                  <p className="text-xs text-orange-500">
+                    {Math.round(usagePercent)}% of quota used.{' '}
+                    {plan !== 'enterprise' && (
+                      <button className="underline font-medium" onClick={() => upgrade(plan === 'free' ? 'pro' : 'enterprise')}>
+                        Upgrade now
+                      </button>
+                    )}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+          {plan !== 'free' && (
+            <Button variant="outline" size="sm" onClick={openPortal} disabled={loading === 'portal'} aria-label="Manage billing">
+              <CreditCard className="w-4 h-4 mr-2" />
+              {loading === 'portal' ? 'Opening…' : 'Manage Billing & Invoices'}
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Plan comparison + upgrade */}
+      <div className="grid gap-3">
+        {([
+          { id: 'pro' as const,        icon: <Zap className="w-4 h-4" />,       features: ['5 agents', '10,000 msgs/mo', '500 KB entries', 'Analytics', 'All integrations'] },
+          { id: 'enterprise' as const, icon: <Building2 className="w-4 h-4" />, features: ['Unlimited agents', 'Unlimited msgs', 'Unlimited KB', 'Priority support', 'Custom domains'] },
+        ]).map(({ id, icon, features }) => {
+          const d = PLAN_DETAILS[id];
+          const isCurrent = plan === id;
+          return (
+            <Card key={id} className={isCurrent ? 'border-indigo-500 border-2' : ''}>
+              <CardContent className="pt-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 font-semibold">
+                    {icon} {d.label}
+                  </div>
+                  <div className="text-sm font-bold">{d.price}<span className="text-muted-foreground font-normal">/mo</span></div>
+                </div>
+                <ul className="space-y-1">
+                  {features.map((f) => (
+                    <li key={f} className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0" /> {f}
+                    </li>
+                  ))}
+                </ul>
+                {isCurrent ? (
+                  <Button className="w-full" variant="outline" disabled aria-label="Current plan">Current plan</Button>
+                ) : (
+                  <Button
+                    className="w-full"
+                    onClick={() => upgrade(id)}
+                    disabled={loading === id || (id === 'pro' && plan === 'enterprise')}
+                    aria-label={`Upgrade to ${d.label}`}
+                  >
+                    {loading === id ? 'Redirecting…' : `Upgrade to ${d.label}`}
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const { settings, theme, updateSettings, updateTheme, analytics } = useAppStore();
   const [showApiKey, setShowApiKey] = useState(false);
   const [newWord, setNewWord] = useState('');
-  const [showBilling, setShowBilling] = useState(false);
 
   const save = (updates: Parameters<typeof updateSettings>[0]) => {
     updateSettings(updates);
@@ -498,96 +628,9 @@ export default function SettingsPage() {
 
         {/* Billing */}
         <TabsContent value="billing" className="space-y-4 mt-4">
-          <Card>
-            <CardContent className="pt-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-semibold">Pro Plan</div>
-                  <div className="text-sm text-muted-foreground">$49 / month</div>
-                </div>
-                <Badge className="bg-indigo-500 text-white">Active</Badge>
-              </div>
-              <Separator />
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Messages used</span>
-                  <span>{analytics.totalMessages.toLocaleString()} / 10,000</span>
-                </div>
-                <Progress value={usagePercent} className="h-2" />
-                {usagePercent > 80 && (
-                  <p className="text-xs text-orange-500">You're using {Math.round(usagePercent)}% of your quota.{' '}
-                    <button className="underline" onClick={() => setShowBilling(true)}>Upgrade plan</button>
-                  </p>
-                )}
-              </div>
-              <Separator />
-              {/* Plan comparison */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-muted-foreground">
-                      <th className="text-left pb-2">Feature</th>
-                      <th className="text-center pb-2">Free</th>
-                      <th className="text-center pb-2 text-indigo-500">Pro</th>
-                      <th className="text-center pb-2">Enterprise</th>
-                    </tr>
-                  </thead>
-                  <tbody className="space-y-1">
-                    {[
-                      ['Messages/mo', '500', '10,000', 'Unlimited'],
-                      ['Bots', '1', '5', 'Unlimited'],
-                      ['KB entries', '10', '500', 'Unlimited'],
-                      ['Analytics', '—', '✓', '✓'],
-                      ['Integrations', '—', '✓', '✓'],
-                      ['Priority support', '—', '—', '✓'],
-                    ].map(([f, free, pro, ent]) => (
-                      <tr key={f} className="border-t border-border">
-                        <td className="py-1.5 text-muted-foreground">{f}</td>
-                        <td className="text-center py-1.5">{free}</td>
-                        <td className="text-center py-1.5 text-indigo-500 font-medium">{pro}</td>
-                        <td className="text-center py-1.5">{ent}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <Button className="w-full" onClick={() => setShowBilling(true)} aria-label="Upgrade plan">
-                <CreditCard className="w-4 h-4 mr-2" />
-                Upgrade Plan
-              </Button>
-            </CardContent>
-          </Card>
+          <BillingTab />
         </TabsContent>
       </Tabs>
-
-      {/* Mock Stripe dialog */}
-      <Dialog open={showBilling} onOpenChange={setShowBilling}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Upgrade to Enterprise</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="grid gap-1.5">
-              <Label>Card Number</Label>
-              <Input placeholder="4242 4242 4242 4242" maxLength={19} aria-label="Card number" />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label>Expiry</Label>
-                <Input placeholder="MM/YY" maxLength={5} aria-label="Card expiry" />
-              </div>
-              <div className="grid gap-1.5">
-                <Label>CVC</Label>
-                <Input placeholder="123" maxLength={4} type="password" aria-label="Card CVC" />
-              </div>
-            </div>
-            <Button className="w-full" onClick={() => { setShowBilling(false); toast.success('Payment UI demo — no real charge made!'); }} aria-label="Confirm payment">
-              Pay $149/month
-            </Button>
-            <p className="text-xs text-muted-foreground text-center">Demo only — no real payment is processed</p>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

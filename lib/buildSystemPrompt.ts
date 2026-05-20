@@ -1,15 +1,27 @@
 import { prisma } from '@/lib/prisma';
 
+const KB_CHAR_BUDGET = 6000;
+
 export async function buildSystemPrompt(agentId: string, orgName: string): Promise<string> {
-  const agent = await prisma.agent.findUnique({
-    where: { id: agentId },
-    include: {
-      connectionsFrom: {
-        include: { toAgent: { select: { id: true, name: true } } },
-        orderBy: { priority: 'asc' },
+  const [agent, kbEntries] = await Promise.all([
+    prisma.agent.findUnique({
+      where: { id: agentId },
+      include: {
+        connectionsFrom: {
+          include: { toAgent: { select: { id: true, name: true } } },
+          orderBy: { priority: 'asc' },
+        },
       },
-    },
-  });
+    }),
+    prisma.knowledgeBase.findMany({
+      where: {
+        OR: [{ agentId }, { agentId: null }],
+        isActive: true,
+      },
+      orderBy: { createdAt: 'asc' },
+      select: { title: true, content: true, type: true },
+    }),
+  ]);
 
   if (!agent) throw new Error(`Agent ${agentId} not found`);
 
@@ -22,6 +34,21 @@ export async function buildSystemPrompt(agentId: string, orgName: string): Promi
   prompt += `\nTone: ${agent.tone}`;
   prompt +=
     '\n\nSCOPE ENFORCEMENT: Only answer questions relevant to your role and the business context above. Politely decline off-topic requests.';
+
+  // Inject knowledge base entries up to the character budget
+  if (kbEntries.length > 0) {
+    let kb = '\n\n---\nKNOWLEDGE BASE — use this information to answer user questions accurately:\n';
+    let used = 0;
+
+    for (const entry of kbEntries) {
+      const block = `\n### ${entry.title}\n${entry.content}\n`;
+      if (used + block.length > KB_CHAR_BUDGET) break;
+      kb += block;
+      used += block.length;
+    }
+
+    prompt += kb + '---';
+  }
 
   if (agent.connectionsFrom.length > 0) {
     const handoffList = agent.connectionsFrom

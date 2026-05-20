@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { X, Edit2, Code2, MessageSquare, Link2, Cpu, Activity, Calendar, CheckCircle2, AlertCircle, Share2 } from 'lucide-react';
+import { X, Edit2, Code2, MessageSquare, Link2, Cpu, Activity, Calendar, CheckCircle2, AlertCircle, Share2, Globe, Trash2, BookOpen, Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ds/Button';
 import { Badge } from '@/components/ds/Badge';
 import { Tabs } from '@/components/ds/Tabs';
@@ -81,15 +81,150 @@ function GoogleCalendarSection() {
   );
 }
 
+interface KbEntry {
+  id: string;
+  title: string;
+  type: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+function KnowledgeBaseSection({ agentId }: { agentId: string }) {
+  const [entries, setEntries] = useState<KbEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [url, setUrl] = useState('');
+  const [scraping, setScraping] = useState(false);
+  const [scrapeMsg, setScrapeMsg] = useState('');
+
+  async function load() {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/knowledge-base?agentId=${agentId}`);
+      if (res.ok) setEntries(await res.json());
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(); }, [agentId]);
+
+  async function scrapeUrl() {
+    if (!url.trim()) return;
+    setScraping(true);
+    setScrapeMsg('');
+    try {
+      const res = await fetch('/api/knowledge-base/scrape', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: url.trim(), agentId }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setScrapeMsg(`Imported ${data.created} section${data.created !== 1 ? 's' : ''} from "${data.title}"`);
+        setUrl('');
+        await load();
+      } else {
+        setScrapeMsg(data.error ?? 'Failed to import page');
+      }
+    } finally {
+      setScraping(false);
+    }
+  }
+
+  async function deleteEntry(id: string) {
+    const res = await fetch(`/api/knowledge-base/${id}`, { method: 'DELETE' });
+    if (res.ok) setEntries((prev) => prev.filter((e) => e.id !== id));
+  }
+
+  const TYPE_COLORS: Record<string, string> = {
+    website: 'text-blue-500',
+    faq: 'text-purple-500',
+    document: 'text-amber-500',
+    policy: 'text-green-500',
+    custom: 'text-gray-500',
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* URL import */}
+      <div className="p-3 rounded-xl bg-[var(--color-bg-subtle)] border border-[var(--color-border-subtle)] space-y-2.5">
+        <p className="text-[11px] font-medium text-[var(--color-text-secondary)] flex items-center gap-1.5">
+          <Globe size={11} />
+          Import from Website
+        </p>
+        <p className="text-[10px] text-[var(--color-text-tertiary)] leading-relaxed">
+          Paste any public page URL — the bot will learn its content automatically.
+        </p>
+        <div className="flex gap-2">
+          <input
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && !scraping && scrapeUrl()}
+            placeholder="https://yoursite.com/about"
+            className="flex-1 px-2.5 py-1.5 text-[11px] rounded-lg border border-[var(--color-border-default)] bg-[var(--surface-0)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+          />
+          <Button
+            variant="primary"
+            size="xs"
+            disabled={!url.trim() || scraping}
+            onClick={scrapeUrl}
+            iconLeft={scraping ? <Loader2 size={10} className="animate-spin" /> : <Plus size={10} />}
+          >
+            {scraping ? 'Loading…' : 'Import'}
+          </Button>
+        </div>
+        {scrapeMsg && (
+          <p className={`text-[10px] ${scrapeMsg.startsWith('Imported') ? 'text-green-600' : 'text-red-500'}`}>
+            {scrapeMsg}
+          </p>
+        )}
+      </div>
+
+      {/* Entry list */}
+      {loading ? (
+        <div className="space-y-2">
+          {[1, 2].map((i) => <div key={i} className="h-10 rounded-xl bg-[var(--color-bg-subtle)] animate-pulse" />)}
+        </div>
+      ) : entries.length === 0 ? (
+        <div className="py-6 text-center">
+          <BookOpen size={20} className="mx-auto text-[var(--color-text-tertiary)] mb-2" />
+          <p className="text-[11px] text-[var(--color-text-tertiary)]">No knowledge entries yet.</p>
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          {entries.map((e) => (
+            <div
+              key={e.id}
+              className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--color-bg-subtle)] border border-[var(--color-border-subtle)]"
+            >
+              <Globe size={11} className={TYPE_COLORS[e.type] ?? 'text-gray-400'} />
+              <span className="flex-1 text-[11px] text-[var(--color-text-primary)] truncate">{e.title}</span>
+              <span className="text-[9px] text-[var(--color-text-tertiary)] uppercase tracking-wide">{e.type}</span>
+              <button
+                onClick={() => deleteEntry(e.id)}
+                className="p-1 text-[var(--color-text-tertiary)] hover:text-red-500 rounded transition-colors"
+                aria-label="Delete entry"
+              >
+                <Trash2 size={11} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const STATUS_VARIANT: Record<AgentStatus, 'success' | 'warning' | 'default' | 'danger'> = {
   ACTIVE: 'success', PAUSED: 'warning', DRAFT: 'default', ARCHIVED: 'danger',
 };
 
 const TABS = [
-  { id: 'overview',     label: 'Overview',    icon: <Activity size={12} /> },
-  { id: 'platform',    label: 'Platform',    icon: <Share2 size={12} /> },
-  { id: 'connections',  label: 'Connections', icon: <Link2 size={12} /> },
-  { id: 'embed',        label: 'Embed',       icon: <Code2 size={12} /> },
+  { id: 'overview',    label: 'Overview',   icon: <Activity  size={12} /> },
+  { id: 'knowledge',   label: 'Knowledge',  icon: <BookOpen  size={12} /> },
+  { id: 'platform',   label: 'Platform',   icon: <Share2    size={12} /> },
+  { id: 'connections', label: 'Connections',icon: <Link2     size={12} /> },
+  { id: 'embed',       label: 'Embed',      icon: <Code2     size={12} /> },
 ];
 
 interface AgentDetailPanelProps {
@@ -231,6 +366,10 @@ export function AgentDetailPanel({ agent, allAgents, onClose, onEdit, onChatPrev
                     Open Chat Preview
                   </Button>
                 </>
+              )}
+
+              {activeTab === 'knowledge' && (
+                <KnowledgeBaseSection agentId={agent.id} />
               )}
 
               {activeTab === 'platform' && (
