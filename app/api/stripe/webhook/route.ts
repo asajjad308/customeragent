@@ -8,12 +8,14 @@ export const runtime = 'nodejs';
 
 async function syncSubscription(sub: Stripe.Subscription) {
   const tenantId = sub.metadata?.tenantId;
+  console.log('[webhook] syncSubscription tenantId:', tenantId, 'status:', sub.status);
   if (!tenantId) return;
 
   const priceId = sub.items.data[0]?.price.id ?? '';
   const plan = sub.status === 'active' || sub.status === 'trialing'
     ? planFromPriceId(priceId)
     : 'free';
+  console.log('[webhook] priceId:', priceId, '→ plan:', plan);
 
   await prisma.tenant.update({
     where: { id: tenantId },
@@ -23,6 +25,7 @@ async function syncSubscription(sub: Stripe.Subscription) {
       subscriptionStatus: sub.status,
     },
   });
+  console.log('[webhook] tenant updated to plan:', plan);
 }
 
 export async function POST(req: NextRequest) {
@@ -62,11 +65,19 @@ export async function POST(req: NextRequest) {
     case 'checkout.session.completed': {
       const cs = event.data.object as Stripe.Checkout.Session;
       const tenantId = cs.metadata?.tenantId;
+      const plan = cs.metadata?.plan;
+      console.log('[webhook] checkout.session.completed tenantId:', tenantId, 'plan:', plan, 'customer:', cs.customer);
       if (tenantId && cs.customer) {
+        const updateData: Record<string, string> = { stripeCustomerId: cs.customer as string };
+        if (plan && (plan === 'pro' || plan === 'enterprise')) {
+          updateData.plan = plan;
+          updateData.subscriptionStatus = 'active';
+        }
         await prisma.tenant.update({
           where: { id: tenantId },
-          data: { stripeCustomerId: cs.customer as string },
+          data: updateData,
         });
+        console.log('[webhook] tenant updated from checkout:', updateData);
       }
       break;
     }
