@@ -32,9 +32,9 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const gcal = searchParams.get('gcal');
+    const billing = searchParams.get('billing');
     if (gcal === 'connected') {
       toast.success('Google Calendar connected! Your booking agent can now check availability and create events.');
-      // Remove the param without a full reload
       window.history.replaceState({}, '', '/dashboard');
     } else if (gcal === 'error') {
       toast.error('Failed to connect Google Calendar. Please try again.');
@@ -42,6 +42,10 @@ export default function DashboardPage() {
     } else if (gcal === 'denied') {
       toast.error('Google Calendar access was denied.');
       window.history.replaceState({}, '', '/dashboard');
+    }
+    if (billing === 'success') {
+      toast.success('Subscription activated! Your plan has been upgraded.');
+      window.history.replaceState({}, '', '/dashboard?tab=settings');
     }
   }, []);
 
@@ -60,7 +64,11 @@ export default function DashboardPage() {
     completeOnboarding,
   } = useAppStore();
 
-  const [selectedNav, setSelectedNav] = useState('Live Chat');
+  const [selectedNav, setSelectedNav] = useState(() =>
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tab') === 'settings'
+      ? 'Settings'
+      : 'Live Chat'
+  );
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const [initialized, setInitialized] = useState(false);
