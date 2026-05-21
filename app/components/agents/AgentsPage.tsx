@@ -167,9 +167,9 @@ export function AgentsPage({ onSwitchToChat }: AgentsPageProps) {
   ];
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <div className="flex h-full w-full overflow-hidden">
       {/* Main column */}
-      <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+      <div className="flex-1 min-w-[320px] flex flex-col overflow-hidden">
         <PageHeader
           title="AI Agents"
           description={`${agents.length} agent${agents.length !== 1 ? 's' : ''} in ${settings.companyName || 'your workspace'}`}

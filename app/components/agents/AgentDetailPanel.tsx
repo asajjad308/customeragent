@@ -220,11 +220,11 @@ const STATUS_VARIANT: Record<AgentStatus, 'success' | 'warning' | 'default' | 'd
 };
 
 const TABS = [
-  { id: 'overview',    label: 'Overview',   icon: <Activity  size={12} /> },
-  { id: 'knowledge',   label: 'Knowledge',  icon: <BookOpen  size={12} /> },
-  { id: 'platform',   label: 'Platform',   icon: <Share2    size={12} /> },
-  { id: 'connections', label: 'Connections',icon: <Link2     size={12} /> },
-  { id: 'embed',       label: 'Embed',      icon: <Code2     size={12} /> },
+  { id: 'overview',    label: 'Overview',     icon: <Activity  size={13} /> },
+  { id: 'knowledge',   label: 'Knowledge',    icon: <BookOpen  size={13} /> },
+  { id: 'platform',    label: 'Platform',     icon: <Share2    size={13} /> },
+  { id: 'connections', label: 'Connections',  icon: <Link2     size={13} /> },
+  { id: 'embed',       label: 'Embed Code',   icon: <Code2     size={13} /> },
 ];
 
 interface AgentDetailPanelProps {
@@ -245,8 +245,8 @@ export function AgentDetailPanel({ agent, allAgents, onClose, onEdit, onChatPrev
       initial="hidden"
       animate="visible"
       exit="hidden"
-      style={{ width: DETAIL_WIDTH }}
-      className="flex flex-col shrink-0 h-full bg-[var(--surface-0)] border-l border-[var(--color-border-subtle)] overflow-hidden"
+      style={{ minWidth: DETAIL_WIDTH, maxWidth: 560 }}
+      className="flex flex-col flex-1 h-full bg-[var(--surface-0)] border-l border-[var(--color-border-subtle)] overflow-hidden"
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border-subtle)]">
@@ -281,7 +281,7 @@ export function AgentDetailPanel({ agent, allAgents, onClose, onEdit, onChatPrev
 
       {/* Tabs content */}
       <div className="flex-1 min-h-0 overflow-y-auto">
-        <Tabs tabs={TABS} className="p-4">
+        <Tabs tabs={TABS} iconOnly className="p-4">
           {(activeTab) => (
             <div className="space-y-4">
               {activeTab === 'overview' && (

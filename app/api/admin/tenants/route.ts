@@ -20,9 +20,44 @@ export async function GET() {
   const tenants = await prisma.tenant.findMany({
     orderBy: { createdAt: 'desc' },
     select: {
-      id: true, name: true, email: true, plan: true,
-      subscriptionStatus: true, suspended: true, createdAt: true,
-      _count: { select: { agents: true, users: true } },
+      id: true,
+      name: true,
+      slug: true,
+      email: true,
+      plan: true,
+      subscriptionStatus: true,
+      suspended: true,
+      createdAt: true,
+      stripeCustomerId: true,
+      _count: {
+        select: {
+          agents: true,
+          users: true,
+          knowledgeBase: true,
+          conversations: true,
+        },
+      },
+      users: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          emailVerified: true,
+          lastLoginAt: true,
+          createdAt: true,
+        },
+      },
+      agents: {
+        select: {
+          id: true,
+          name: true,
+          status: true,
+          messageCount: true,
+          isActive: true,
+          createdAt: true,
+        },
+      },
     },
   });
 

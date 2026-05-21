@@ -100,5 +100,5 @@ export const typography = {
 export const fontWeights = { regular: 400, medium: 500, semibold: 600 } as const;
 
 export const SIDEBAR_WIDTH = 220;
-export const DETAIL_WIDTH = 360;
+export const DETAIL_WIDTH = 440;
 export const CHAT_PREVIEW_WIDTH = 380;

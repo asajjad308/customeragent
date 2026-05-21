@@ -17,10 +17,11 @@ interface TabsProps {
   activeTab?: string;
   onTabChange?: (id: string) => void;
   className?: string;
+  iconOnly?: boolean;
   children?: (activeTab: string) => React.ReactNode;
 }
 
-export function Tabs({ tabs, defaultTab, activeTab: controlledTab, onTabChange, className, children }: TabsProps) {
+export function Tabs({ tabs, defaultTab, activeTab: controlledTab, onTabChange, className, iconOnly, children }: TabsProps) {
   const [internalTab, setInternalTab] = useState(defaultTab ?? tabs[0]?.id);
   const active = controlledTab ?? internalTab;
 
@@ -31,13 +32,15 @@ export function Tabs({ tabs, defaultTab, activeTab: controlledTab, onTabChange, 
 
   return (
     <div className={className}>
-      <div className="flex items-center gap-0.5 p-1 bg-[var(--color-bg-subtle)] rounded-xl w-fit">
+      <div className="flex items-center gap-0.5 p-1 bg-[var(--color-bg-subtle)] rounded-xl w-full">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => handleChange(tab.id)}
+            title={iconOnly ? tab.label : undefined}
             className={cn(
-              'relative flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium rounded-lg transition-colors z-10',
+              'relative flex items-center justify-center gap-1.5 text-[12px] font-medium rounded-lg transition-colors z-10 flex-1',
+              iconOnly ? 'px-2 py-2' : 'px-3 py-1.5',
               active === tab.id
                 ? 'text-[var(--color-text-primary)]'
                 : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]',
@@ -52,8 +55,8 @@ export function Tabs({ tabs, defaultTab, activeTab: controlledTab, onTabChange, 
             )}
             <span className="relative z-10 flex items-center gap-1.5">
               {tab.icon}
-              {tab.label}
-              {tab.badge != null && (
+              {!iconOnly && tab.label}
+              {!iconOnly && tab.badge != null && (
                 <span className="text-[10px] bg-[var(--color-bg-muted)] text-[var(--color-text-tertiary)] rounded-full px-1.5 py-0.5 font-numeric">
                   {tab.badge}
                 </span>
