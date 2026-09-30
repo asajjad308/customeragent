@@ -1,6 +1,7 @@
 // Applies prisma/migrations/*/migration.sql to the Turso database, once each.
 // `prisma migrate deploy` can't talk to Turso directly, so the build runs this instead.
 // Skips quietly when TURSO_DATABASE_URL isn't set (local builds use a SQLite file).
+import 'dotenv/config';
 import { createClient } from '@libsql/client';
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
