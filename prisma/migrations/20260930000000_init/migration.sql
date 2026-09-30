@@ -7,8 +7,26 @@ CREATE TABLE "tenants" (
     "email" TEXT NOT NULL,
     "logoUrl" TEXT,
     "primaryColor" TEXT NOT NULL DEFAULT '#6366F1',
+    "suspended" BOOLEAN NOT NULL DEFAULT false,
+    "stripeCustomerId" TEXT,
+    "stripeSubscriptionId" TEXT,
+    "subscriptionStatus" TEXT NOT NULL DEFAULT 'inactive',
+    "trialEndsAt" DATETIME,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL
+);
+
+-- CreateTable
+CREATE TABLE "llm_api_keys" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "tenantId" TEXT NOT NULL,
+    "provider" TEXT NOT NULL,
+    "label" TEXT NOT NULL,
+    "key" TEXT NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "llm_api_keys_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "tenants" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -20,6 +38,10 @@ CREATE TABLE "users" (
     "password" TEXT NOT NULL,
     "role" TEXT NOT NULL DEFAULT 'member',
     "avatarUrl" TEXT,
+    "emailVerified" BOOLEAN NOT NULL DEFAULT false,
+    "verifyToken" TEXT,
+    "resetToken" TEXT,
+    "resetTokenExpiry" DATETIME,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
     "lastLoginAt" DATETIME,
@@ -43,6 +65,8 @@ CREATE TABLE "agents" (
     "tenantId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
+    "typeId" TEXT NOT NULL DEFAULT 'SUPPORT',
+    "status" TEXT NOT NULL DEFAULT 'DRAFT',
     "avatarColor" TEXT NOT NULL DEFAULT '#6366F1',
     "systemPrompt" TEXT NOT NULL,
     "businessContext" TEXT,
@@ -50,15 +74,36 @@ CREATE TABLE "agents" (
     "tone" TEXT NOT NULL DEFAULT 'friendly',
     "model" TEXT NOT NULL DEFAULT 'llama-3.3-70b-versatile',
     "temperature" REAL NOT NULL DEFAULT 0.7,
+    "maxTokens" INTEGER NOT NULL DEFAULT 512,
+    "widgetTheme" TEXT NOT NULL DEFAULT 'SOFT_AURORA',
+    "quickReplies" JSONB NOT NULL DEFAULT '[]',
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "widgetPosition" TEXT NOT NULL DEFAULT 'bottom-right',
     "widgetColor" TEXT NOT NULL DEFAULT '#6366F1',
     "allowedDomains" TEXT,
     "maxMsgPerHour" INTEGER NOT NULL DEFAULT 50,
     "blockedWords" TEXT,
+    "platform" TEXT NOT NULL DEFAULT 'WEBSITE',
+    "sessions" INTEGER NOT NULL DEFAULT 0,
+    "messageCount" INTEGER NOT NULL DEFAULT 0,
+    "satisfaction" REAL,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
+    "lastActiveAt" DATETIME,
     CONSTRAINT "agents_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "tenants" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "agent_connections" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "fromAgentId" TEXT NOT NULL,
+    "toAgentId" TEXT NOT NULL,
+    "trigger" TEXT NOT NULL,
+    "label" TEXT NOT NULL,
+    "priority" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "agent_connections_fromAgentId_fkey" FOREIGN KEY ("fromAgentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "agent_connections_toAgentId_fkey" FOREIGN KEY ("toAgentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -173,6 +218,21 @@ CREATE TABLE "analytics_snapshots" (
 );
 
 -- CreateTable
+CREATE TABLE "platform_connections" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "agentId" TEXT NOT NULL,
+    "platform" TEXT NOT NULL,
+    "pageId" TEXT,
+    "pageName" TEXT,
+    "accessToken" TEXT,
+    "webhookVerifyToken" TEXT NOT NULL,
+    "connectedAt" DATETIME,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "platform_connections_agentId_fkey" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
 CREATE TABLE "usage_records" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "tenantId" TEXT NOT NULL,
@@ -189,6 +249,12 @@ CREATE UNIQUE INDEX "tenants_slug_key" ON "tenants"("slug");
 CREATE UNIQUE INDEX "tenants_email_key" ON "tenants"("email");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "tenants_stripeCustomerId_key" ON "tenants"("stripeCustomerId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "llm_api_keys_tenantId_provider_label_key" ON "llm_api_keys"("tenantId", "provider", "label");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "users_tenantId_email_key" ON "users"("tenantId", "email");
 
 -- CreateIndex
@@ -196,6 +262,9 @@ CREATE UNIQUE INDEX "sessions_sessionToken_key" ON "sessions"("sessionToken");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "agents_tenantId_slug_key" ON "agents"("tenantId", "slug");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "agent_connections_fromAgentId_toAgentId_key" ON "agent_connections"("fromAgentId", "toAgentId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "conversations_sessionId_key" ON "conversations"("sessionId");
@@ -216,4 +285,8 @@ CREATE UNIQUE INDEX "tenant_settings_tenantId_key" ON "tenant_settings"("tenantI
 CREATE UNIQUE INDEX "analytics_snapshots_tenantId_agentId_date_key" ON "analytics_snapshots"("tenantId", "agentId", "date");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "platform_connections_agentId_key" ON "platform_connections"("agentId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "usage_records_tenantId_agentId_month_key" ON "usage_records"("tenantId", "agentId", "month");
+

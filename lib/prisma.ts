@@ -1,14 +1,13 @@
-import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaLibSql } from '@prisma/adapter-libsql';
 import { PrismaClient } from '@prisma/client';
 
-function createPrismaClient() {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) throw new Error('DATABASE_URL is not set');
+// Turso (hosted SQLite) in production; a local SQLite file such as file:./prisma/dev.db in development.
+export function createPrismaClient() {
+  const url = process.env.TURSO_DATABASE_URL ?? process.env.DATABASE_URL;
+  if (!url) throw new Error('TURSO_DATABASE_URL (or DATABASE_URL for a local SQLite file) is not set');
+  if (url.startsWith('postgres')) throw new Error('DATABASE_URL is a Postgres URL; set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN');
 
-  const adapter = new PrismaPg({
-    connectionString,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
-  });
+  const adapter = new PrismaLibSql({ url, authToken: process.env.TURSO_AUTH_TOKEN });
 
   return new PrismaClient({
     adapter,

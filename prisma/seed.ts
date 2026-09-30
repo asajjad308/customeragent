@@ -1,14 +1,13 @@
 // Load env first before any module-level initialization
 import { config } from 'dotenv';
 import { resolve } from 'path';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 config({ path: resolve(process.cwd(), '.env') });
 
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
-const prisma = new PrismaClient({ adapter });
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { createPrismaClient } = require('../lib/prisma') as typeof import('../lib/prisma');
+const prisma = createPrismaClient();
 
 async function main() {
   console.log('Seeding database...');

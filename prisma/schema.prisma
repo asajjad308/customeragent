@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
 }
 
 enum AgentType {
@@ -135,7 +135,7 @@ model Agent {
   temperature     Float       @default(0.7)
   maxTokens       Int         @default(512)
   widgetTheme     WidgetTheme @default(SOFT_AURORA)
-  quickReplies    String[]    @default([])
+  quickReplies    Json        @default("[]")
   isActive        Boolean     @default(true)
   widgetPosition  String      @default("bottom-right")
   widgetColor     String      @default("#6366F1")

@@ -10,6 +10,7 @@ export default defineConfig({
     seed: "npx tsx prisma/seed.ts",
   },
   datasource: {
-    url: process.env["DIRECT_URL"] ?? process.env["DATABASE_URL"],
+    // Prisma CLI works on a local SQLite file; Turso gets migrations via scripts/migrate-turso.ts
+    url: process.env["DATABASE_URL"] ?? "file:./prisma/dev.db",
   },
 });
