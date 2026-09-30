@@ -118,7 +118,7 @@ export function AgentCard({ agent, selected, onClick, onEdit, onStatusChange, on
           {agent.model && (
             <Badge variant="outline" size="sm">
               <Zap size={9} className="mr-0.5" />
-              {agent.model.split('-').slice(0, 2).join(' ')}
+              {agent.model.split('/').pop()!.split('-').slice(0, 2).join(' ')}
             </Badge>
           )}
         </div>

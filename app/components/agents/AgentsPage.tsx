@@ -195,9 +195,10 @@ export function AgentsPage({ onSwitchToChat }: AgentsPageProps) {
         />
 
         <div className="flex-1 min-h-0 overflow-y-auto">
-          <div className="p-6 space-y-5">
+          {/* Sized by container, not viewport, since the sidebar and detail panel take width too */}
+          <div className="@container p-4 pb-24 sm:p-6 md:pb-6 space-y-5">
             {/* Stat cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 @xl:grid-cols-4 gap-3">
               {statCards.map((stat) => (
                 <div key={stat.label} className="bg-[var(--surface-0)] border border-[var(--color-border-subtle)] rounded-xl p-4">
                   <div className="text-[22px] font-bold text-[var(--color-text-primary)] font-numeric">{stat.value}</div>
@@ -249,7 +250,7 @@ export function AgentsPage({ onSwitchToChat }: AgentsPageProps) {
 
             {/* Agent grid/list */}
             {isLoading ? (
-              <div className={`grid gap-3 ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
+              <div className={`grid gap-3 ${viewMode === 'grid' ? 'grid-cols-1 @xl:grid-cols-2 @4xl:grid-cols-3' : 'grid-cols-1'}`}>
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="rounded-xl border border-[var(--color-border-subtle)] overflow-hidden">
                     <Skeleton height={4} />
@@ -282,7 +283,7 @@ export function AgentsPage({ onSwitchToChat }: AgentsPageProps) {
                 variants={staggerContainer(0.04)}
                 initial="hidden"
                 animate="visible"
-                className={`grid gap-3 ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}
+                className={`grid gap-3 ${viewMode === 'grid' ? 'grid-cols-1 @xl:grid-cols-2 @4xl:grid-cols-3' : 'grid-cols-1'}`}
               >
                 <AnimatePresence>
                   {filtered.map((agent) => (
@@ -303,6 +304,15 @@ export function AgentsPage({ onSwitchToChat }: AgentsPageProps) {
         </div>
       </div>
 
+      {/* Backdrop for the detail / preview drawer below xl */}
+      {(selectedAgent || chatPreviewAgent) && (
+        <div
+          aria-hidden="true"
+          className="fixed inset-0 z-40 bg-black/30 xl:hidden"
+          onClick={() => { setChatPreviewAgent(null); selectAgent(null); }}
+        />
+      )}
+
       {/* Detail panel */}
       <AnimatePresence>
         {selectedAgent && !chatPreviewAgent && (
@@ -320,7 +330,10 @@ export function AgentsPage({ onSwitchToChat }: AgentsPageProps) {
       {/* Chat preview panel */}
       <AnimatePresence>
         {chatPreviewAgent && (
-          <div style={{ width: CHAT_PREVIEW_WIDTH }} className="flex-shrink-0 h-full">
+          <div
+            style={{ '--preview-w': `${CHAT_PREVIEW_WIDTH}px` } as React.CSSProperties}
+            className="fixed inset-y-0 right-0 z-50 w-full sm:w-[var(--preview-w)] shadow-2xl xl:static xl:z-auto xl:shadow-none flex-shrink-0 h-full"
+          >
             <AgentChatPreview
               key={chatPreviewAgent.id}
               agent={chatPreviewAgent}
@@ -351,6 +364,7 @@ export function AgentsPage({ onSwitchToChat }: AgentsPageProps) {
           businessContext: editAgent.businessContext ?? '',
           greeting: editAgent.greeting,
           tone: editAgent.tone,
+          model: editAgent.model,
           temperature: editAgent.temperature,
           maxTokens: editAgent.maxTokens,
           widgetTheme: editAgent.widgetTheme,

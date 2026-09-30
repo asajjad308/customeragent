@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { groq } from '@/lib/groq';
+import { resolveModel } from '@/lib/llm-client';
 import { buildSystemPrompt } from '@/lib/buildSystemPrompt';
 import {
   sendFacebookMessage,
@@ -139,7 +140,7 @@ async function getAiReply(
   // Call LLM (non-streaming for webhooks)
   const agent = await prisma.agent.findUnique({ where: { id: agentId } });
   const completion = await groq.chat.completions.create({
-    model: agent?.model ?? 'llama-3.3-70b-versatile',
+    model: resolveModel(agent?.model),
     messages: [
       { role: 'system', content: systemPrompt },
       ...history.map((h) => ({ role: h.role as 'user' | 'assistant', content: h.content })),

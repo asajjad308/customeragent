@@ -31,13 +31,13 @@ export function Tabs({ tabs, defaultTab, activeTab: controlledTab, onTabChange, 
 
   return (
     <div className={className}>
-      <div className="flex items-center gap-0.5 p-1 bg-[var(--color-bg-subtle)] rounded-xl w-fit">
+      <div className="flex items-center gap-0.5 p-1 bg-[var(--color-bg-subtle)] rounded-xl w-fit max-w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => handleChange(tab.id)}
             className={cn(
-              'relative flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium rounded-lg transition-colors z-10',
+              'relative flex shrink-0 items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium whitespace-nowrap rounded-lg transition-colors z-10',
               active === tab.id
                 ? 'text-[var(--color-text-primary)]'
                 : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]',

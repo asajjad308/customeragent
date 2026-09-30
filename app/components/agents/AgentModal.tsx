@@ -7,6 +7,7 @@ import { Button } from '@/components/ds/Button';
 import { Input } from '@/components/ds/Input';
 import { Select } from '@/components/ds/Select';
 import { AgentTypeSelector } from './AgentTypeSelector';
+import { ModelSelect } from './ModelSelect';
 import { backdropVariants, modalVariants, stepVariants } from '@/lib/animations';
 import { cn } from '@/lib/utils';
 import type { AgentFormData, AgentType } from '@/store/agentsStore';
@@ -490,6 +491,7 @@ export function AgentModal({ open, onClose, initial, onSubmit, title = 'Create A
                     {/* ── Step 3: Configuration ── */}
                     {step === 2 && (
                       <>
+                        <ModelSelect value={form.model} onChange={(m) => set('model', m)} />
                         <div>
                           <label className="text-[12px] font-medium text-[var(--color-text-primary)] block mb-1">
                             Temperature: {form.temperature}

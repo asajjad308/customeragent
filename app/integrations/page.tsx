@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useAppStore } from '@/store';
+import { useModels } from '@/hooks/useModels';
 
 interface IntegrationCardProps {
   title: string;
@@ -61,6 +62,8 @@ function IntegrationCard({ title, description, icon, connected, children, always
 export default function IntegrationsPage() {
   const { integrations, updateIntegration } = useAppStore();
   const { groq, slack, whatsapp, email, zapier, shopify } = integrations;
+  const { models, loading: modelsLoading } = useModels();
+  const groqModels = models.filter((m) => m.provider === 'groq');
 
   const [slackUrl, setSlackUrl] = useState(slack.webhookUrl);
   const [waPhone, setWaPhone] = useState(whatsapp.phoneId);
@@ -112,9 +115,12 @@ export default function IntegrationsPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="llama-3.3-70b-versatile">Llama 3.3 70B Versatile</SelectItem>
-                <SelectItem value="llama-3.1-8b-instant">Llama 3.1 8B Instant</SelectItem>
-                <SelectItem value="mixtral-8x7b-32768">Mixtral 8x7B</SelectItem>
+                {!groqModels.some((m) => m.id === groq.model) && (
+                  <SelectItem value={groq.model}>{groq.model}{modelsLoading ? '' : ' (no longer available)'}</SelectItem>
+                )}
+                {groqModels.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>{m.id}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
