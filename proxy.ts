@@ -22,7 +22,7 @@ function checkRate(key: string, limit: number, windowMs: number): boolean {
   return true;
 }
 
-const PUBLIC_EXACT = ['/', '/pricing'];
+const PUBLIC_EXACT = ['/', '/pricing', '/robots.txt', '/sitemap.xml'];
 const PUBLIC_PATHS = ['/login', '/register', '/forgot-password', '/reset-password', '/embed.js', '/widget', '/suspended'];
 const API_PUBLIC   = ['/api/auth', '/api/bot-config', '/api/chat', '/api/feedback', '/api/register', '/api/embed', '/api/stripe/webhook'];
 
