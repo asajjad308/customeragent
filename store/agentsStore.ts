@@ -78,6 +78,7 @@ export interface AgentFormData {
   systemPrompt: string;
   businessContext: string;
   tone: string;
+  model?: string;
   temperature: number;
   maxTokens: number;
   widgetTheme: WidgetTheme;
@@ -150,6 +151,7 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
           tone: form.tone ?? 'friendly',
           avatarColor: form.color ?? '#6366F1',
           widgetColor: form.color ?? '#6366F1',
+          model: form.model || undefined,
           temperature: form.temperature ?? 0.4,
           maxTokens: form.maxTokens ?? 512,
           widgetTheme: form.widgetTheme ?? 'SOFT_AURORA',
@@ -181,6 +183,7 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
               widgetColor: form.color ?? a.widgetColor,
               businessContext: form.businessContext ?? a.businessContext,
               typeId: form.typeId ?? a.typeId,
+              model: form.model || a.model,
               temperature: form.temperature ?? a.temperature,
               maxTokens: form.maxTokens ?? a.maxTokens,
               widgetTheme: form.widgetTheme ?? a.widgetTheme,
@@ -201,6 +204,7 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
           widgetColor: form.color,
           businessContext: form.businessContext,
           typeId: form.typeId,
+          model: form.model || undefined,
           temperature: form.temperature,
           maxTokens: form.maxTokens,
           widgetTheme: form.widgetTheme,

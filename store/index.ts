@@ -238,7 +238,7 @@ export const useAppStore = create<AppState>()(
       kbFiles: [],
 
       integrations: {
-        groq: { model: 'llama-3.3-70b-versatile', temperature: 0.7 },
+        groq: { model: 'openai/gpt-oss-120b', temperature: 0.7 },
         slack: { webhookUrl: '', connected: false },
         whatsapp: { phoneId: '', token: '', connected: false },
         email: { host: '', port: '587', user: '', pass: '', to: '', connected: false },

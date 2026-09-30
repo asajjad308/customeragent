@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getLlmClient } from '@/lib/llm-client';
+import { getLlmClient, resolveModel } from '@/lib/llm-client';
 import { buildSystemPrompt } from '@/lib/buildSystemPrompt';
 import { getPlanLimits } from '@/lib/plans';
 import {
@@ -198,14 +198,14 @@ export async function POST(request: NextRequest) {
 
       const history: { role: string; content: string }[] = Array.isArray(body.history) ? body.history : [];
       chatMessages = [...history, { role: 'user', content: String(body.message) }];
-      model = agent.model ?? 'llama-3.3-70b-versatile';
+      model = resolveModel(agent.model);
       temperature = agent.temperature ?? 0.7;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       maxTokens = (agent as any).maxTokens ?? 512;
     } else {
       systemPrompt = body.systemPrompt as string;
       chatMessages = body.messages as { role: string; content: string }[];
-      model = (body.model as string | undefined) ?? 'llama-3.3-70b-versatile';
+      model = resolveModel(body.model as string | undefined);
       temperature = (body.temperature as number | undefined) ?? 0.7;
       maxTokens = 1024;
       agentId = (body.agentId as string | undefined) ?? null;

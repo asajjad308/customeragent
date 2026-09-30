@@ -245,8 +245,9 @@ export function AgentDetailPanel({ agent, allAgents, onClose, onEdit, onChatPrev
       initial="hidden"
       animate="visible"
       exit="hidden"
-      style={{ width: DETAIL_WIDTH }}
-      className="flex flex-col shrink-0 h-full bg-[var(--surface-0)] border-l border-[var(--color-border-subtle)] overflow-hidden"
+      style={{ '--detail-w': `${DETAIL_WIDTH}px` } as React.CSSProperties}
+      // Below xl the panel slides over the page as a drawer; on xl+ it sits beside the grid.
+      className="fixed inset-y-0 right-0 z-50 w-full sm:w-[var(--detail-w)] shadow-2xl xl:static xl:z-auto xl:shadow-none flex flex-col shrink-0 h-full bg-[var(--surface-0)] border-l border-[var(--color-border-subtle)] overflow-hidden"
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border-subtle)]">
