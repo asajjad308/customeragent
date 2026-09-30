@@ -15,13 +15,42 @@ if (!url) {
   process.exit(0);
 }
 
-const db = createClient({ url, authToken: clean(process.env.TURSO_AUTH_TOKEN) });
+const authToken = clean(process.env.TURSO_AUTH_TOKEN);
+const db = createClient({ url, authToken });
 const dir = join(process.cwd(), 'prisma', 'migrations');
 
-await db.execute(`CREATE TABLE IF NOT EXISTS "_app_migrations" (
-  "name" TEXT NOT NULL PRIMARY KEY,
-  "appliedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-)`);
+// libSQL drops Turso's error text; on failure, ask again directly and print why, without the secret
+async function explainConnectionError() {
+  const t = authToken ?? '';
+  const parts = t.split('.');
+  let claims = 'not a JWT';
+  try {
+    const c = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
+    claims = JSON.stringify({ a: c.a, id: c.id, p: c.p ? Object.keys(c.p) : undefined, exp: c.exp ? new Date(c.exp * 1000).toISOString() : 'none' });
+  } catch {}
+  console.error(`[migrate-turso] url host: ${new URL(url.replace(/^libsql:/, 'https:')).host}`);
+  console.error(`[migrate-turso] token: ${t.length} chars, ${parts.length} parts, whitespace inside: ${/\s/.test(t)}, non-ASCII: ${/[^\x21-\x7e]/.test(t)}, claims: ${claims}`);
+  try {
+    const res = await fetch(`${url.replace(/^libsql:/, 'https:')}/v2/pipeline`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(t && { Authorization: `Bearer ${t}` }) },
+      body: JSON.stringify({ requests: [{ type: 'execute', stmt: { sql: 'SELECT 1' } }, { type: 'close' }] }),
+    });
+    console.error(`[migrate-turso] direct request: HTTP ${res.status} ${(await res.text()).slice(0, 300)}`);
+  } catch (e) {
+    console.error(`[migrate-turso] direct request failed: ${e.message}`);
+  }
+}
+
+try {
+  await db.execute(`CREATE TABLE IF NOT EXISTS "_app_migrations" (
+    "name" TEXT NOT NULL PRIMARY KEY,
+    "appliedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`);
+} catch (e) {
+  await explainConnectionError();
+  throw e;
+}
 
 const applied = new Set((await db.execute('SELECT name FROM "_app_migrations"')).rows.map((r) => r.name));
 const pending = readdirSync(dir, { withFileTypes: true })
