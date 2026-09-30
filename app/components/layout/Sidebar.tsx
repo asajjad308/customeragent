@@ -73,11 +73,11 @@ export function Sidebar({ selectedNav, onNavChange }: SidebarProps) {
       {/* Logo / workspace */}
       <div className="px-4 py-3.5 border-b border-[var(--color-border-subtle)]">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-[var(--color-accent)] flex items-center justify-center flex-shrink-0">
-            <Bot size={14} className="text-white" />
+          <div className="brand-mark w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 shadow-[inset_0_-2px_0_rgb(0_0_0/0.12)]">
+            <Bot size={14} />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-[13px] font-semibold text-[var(--color-text-primary)] truncate leading-tight">
+            <div className="font-display text-[14px] font-semibold tracking-tight text-[var(--color-text-primary)] truncate leading-tight">
               {settings.companyName || 'SupportAI'}
             </div>
             <div className="text-[10px] text-[var(--color-text-tertiary)]">Dashboard</div>
@@ -99,14 +99,14 @@ export function Sidebar({ selectedNav, onNavChange }: SidebarProps) {
                   className={cn(
                     'relative w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium transition-colors',
                     active
-                      ? 'text-[var(--color-text-primary)]'
+                      ? 'text-[var(--color-accent)]'
                       : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-muted)]',
                   )}
                 >
                   {active && (
                     <motion.span
                       layoutId="sidebar-pill"
-                      className="absolute inset-0 bg-[var(--surface-0)] rounded-lg border border-[var(--color-border-subtle)] shadow-sm"
+                      className="absolute inset-0 bg-[var(--color-accent-subtle)] rounded-lg"
                       transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                     />
                   )}
@@ -126,7 +126,7 @@ export function Sidebar({ selectedNav, onNavChange }: SidebarProps) {
         <div className="px-1">
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-1 text-[11px] text-[var(--color-text-tertiary)]">
-              <Zap size={11} className="text-yellow-500" />
+              <Zap size={11} className="text-[var(--accent-violet)]" />
               Usage
             </div>
             <span className="text-[10px] text-[var(--color-text-tertiary)] font-numeric">
@@ -142,7 +142,7 @@ export function Sidebar({ selectedNav, onNavChange }: SidebarProps) {
           {totalMessages / limit > 0.8 && (
             <button
               onClick={() => onNavChange('Settings')}
-              className="mt-1 text-[11px] text-[#D97706] hover:underline"
+              className="mt-1 text-[11px] font-medium text-[var(--warning)] hover:underline"
             >
               Upgrade plan →
             </button>

@@ -108,7 +108,7 @@ export function OnboardingChecklist() {
     <div className="fixed bottom-6 right-6 z-50 w-80 rounded-2xl border border-border bg-background shadow-2xl overflow-hidden">
       {/* Header */}
       <div
-        className="flex items-center justify-between px-4 py-3 bg-indigo-500 text-white cursor-pointer"
+        className="flex items-center justify-between px-4 py-3 bg-grad-fill cursor-pointer"
         onClick={() => setCollapsed((c) => !c)}
       >
         <div className="flex items-center gap-2">
@@ -129,7 +129,7 @@ export function OnboardingChecklist() {
 
       {/* Progress bar */}
       <div className="h-1 bg-muted">
-        <div className="h-full bg-indigo-500 transition-all duration-500" style={{ width: `${pct}%` }} />
+        <div className="h-full bg-[var(--color-accent)] transition-all duration-500" style={{ width: `${pct}%` }} />
       </div>
 
       {!collapsed && (

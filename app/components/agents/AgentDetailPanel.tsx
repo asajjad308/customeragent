@@ -137,7 +137,7 @@ function KnowledgeBaseSection({ agentId }: { agentId: string }) {
   }
 
   const TYPE_COLORS: Record<string, string> = {
-    website: 'text-blue-500',
+    website: 'text-[#0891B2] dark:text-[#22D3EE]',
     faq: 'text-purple-500',
     document: 'text-amber-500',
     policy: 'text-green-500',

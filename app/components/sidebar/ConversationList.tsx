@@ -102,7 +102,7 @@ export function ConversationList({ onSelect, onNew }: ConversationListProps) {
                       <span className={`text-xs truncate flex-1 ${unread ? 'font-semibold' : 'font-medium'}`}>
                         {conv.title}
                       </span>
-                      {unread && <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />}
+                      {unread && <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] shrink-0" />}
                     </div>
                     {lastMsg && (
                       <p className="text-xs text-muted-foreground truncate">{lastMsg.content.slice(0, 35)}</p>

@@ -117,7 +117,7 @@ export function ConversationsPage({ onSelect }: ConversationsPageProps) {
                 {/* Agent avatar */}
                 <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0 mt-0.5"
-                  style={{ backgroundColor: bot?.color ?? '#6366F1' }}
+                  style={{ backgroundColor: bot?.color ?? '#4F46E5' }}
                 >
                   {(bot?.name ?? '?').charAt(0).toUpperCase()}
                 </div>

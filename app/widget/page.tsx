@@ -51,7 +51,7 @@ export default function WidgetPage({ searchParams }: WidgetPageProps) {
           systemPrompt: 'You are a helpful assistant.',
           businessContext: '',
           tone: 'friendly',
-          color: '#6366F1',
+          color: '#4F46E5',
         });
       }
     };
@@ -129,7 +129,7 @@ export default function WidgetPage({ searchParams }: WidgetPageProps) {
   if (!config) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-accent)]" />
       </div>
     );
   }

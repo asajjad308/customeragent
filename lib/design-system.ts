@@ -38,7 +38,7 @@ export const colors = {
 
 // ── Agent type palette
 export const agentTypeColors = {
-  SUPPORT:    { base: '#2563EB', subtle: '#EFF6FF', dark: '#1E40AF', label: 'Support' },
+  SUPPORT:    { base: '#4F46E5', subtle: '#ECEEFF', dark: '#3730A3', label: 'Support' },
   TECHNICAL:  { base: '#0891B2', subtle: '#ECFEFF', dark: '#0E7490', label: 'Technical' },
   SALES:      { base: '#059669', subtle: '#ECFDF5', dark: '#047857', label: 'Sales' },
   LEAD_GEN:   { base: '#D97706', subtle: '#FFFBEB', dark: '#B45309', label: 'Lead Gen' },

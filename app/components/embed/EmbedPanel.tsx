@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { useAppStore } from '@/store';
 
 const COLOR_OPTIONS = [
-  '#6366F1', '#8B5CF6', '#34D399', '#F59E0B', '#EF4444', '#3B82F6',
+  '#4F46E5', '#7C3AED', '#0891B2', '#059669', '#D97706', '#DB2777',
 ];
 
 export function EmbedPanel() {
@@ -60,7 +60,7 @@ export function EmbedPanel() {
           <CardTitle className="text-sm">Embed Code</CardTitle>
         </CardHeader>
         <CardContent className="px-3 pb-3 space-y-2">
-          <pre className="bg-zinc-900 text-green-400 p-3 rounded-lg text-xs font-mono overflow-x-auto whitespace-pre-wrap break-all">
+          <pre className="bg-[#0B1020] text-[#A5B4FC] border border-white/10 p-3 rounded-lg text-xs font-mono overflow-x-auto whitespace-pre-wrap break-all">
             {embedCode}
           </pre>
           <Button onClick={handleCopy} size="sm" className="w-full" aria-label="Copy embed code">
@@ -129,13 +129,13 @@ export function EmbedPanel() {
           <DialogHeader>
             <DialogTitle>Widget Preview</DialogTitle>
           </DialogHeader>
-          <div className="relative bg-gray-100 rounded-lg h-64 overflow-hidden">
+          <div className="relative bg-muted rounded-lg h-64 overflow-hidden">
             {/* Fake website background */}
             <div className="p-4 space-y-2">
-              <div className="h-3 bg-gray-300 rounded w-3/4" />
-              <div className="h-3 bg-gray-300 rounded w-1/2" />
-              <div className="h-3 bg-gray-200 rounded w-full" />
-              <div className="h-3 bg-gray-200 rounded w-5/6" />
+              <div className="h-3 bg-[var(--color-bg-emphasis)] rounded w-3/4" />
+              <div className="h-3 bg-[var(--color-bg-emphasis)] rounded w-1/2" />
+              <div className="h-3 bg-[var(--color-bg-muted)] rounded w-full" />
+              <div className="h-3 bg-[var(--color-bg-muted)] rounded w-5/6" />
             </div>
             {/* Widget launcher */}
             <div

@@ -11,7 +11,7 @@ import { backdropVariants, modalVariants, stepVariants } from '@/lib/animations'
 import { cn } from '@/lib/utils';
 import type { AgentFormData, AgentType } from '@/store/agentsStore';
 
-const COLOR_OPTIONS = ['#2563EB', '#7C3AED', '#059669', '#D97706', '#DC2626', '#0891B2', '#10B981', '#F97316'];
+const COLOR_OPTIONS = ['#4F46E5', '#7C3AED', '#059669', '#D97706', '#DC2626', '#0891B2', '#10B981', '#F97316'];
 
 const TONE_OPTIONS = [
   { value: 'friendly',     label: 'Friendly' },
@@ -35,7 +35,7 @@ const TYPE_DEFAULTS: Record<AgentType, {
   color: string;
 }> = {
   SUPPORT: {
-    color: '#2563EB',
+    color: '#4F46E5',
     tone: 'friendly',
     greeting: 'Hi! How can I help you today?',
     quickReplies: ['Track my order', 'Request a refund', 'Talk to a human'],
@@ -314,8 +314,8 @@ export function AgentModal({ open, onClose, initial, onSubmit, title = 'Create A
                   <div
                     className={cn(
                       'w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-semibold transition-all',
-                      i < step ? 'bg-[var(--color-accent)] text-white' :
-                      i === step ? 'bg-[var(--color-accent)] text-white' :
+                      i < step ? 'bg-[var(--color-accent)] text-[var(--color-on-accent)]' :
+                      i === step ? 'bg-[var(--color-accent)] text-[var(--color-on-accent)]' :
                       'bg-[var(--color-bg-muted)] text-[var(--color-text-tertiary)]',
                     )}
                   >

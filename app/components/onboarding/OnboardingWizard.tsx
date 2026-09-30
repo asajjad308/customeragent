@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { useAppStore } from '@/store';
 
-const COLOR_OPTIONS = ['#6366F1', '#8B5CF6', '#34D399', '#F59E0B', '#EF4444', '#3B82F6'];
+const COLOR_OPTIONS = ['#4F46E5', '#7C3AED', '#0891B2', '#059669', '#D97706', '#DB2777'];
 
 const BUSINESS_PROMPTS: Record<string, string> = {
   ecommerce: 'You are a helpful e-commerce support assistant. Help customers with orders, returns, shipping, and product questions. Be friendly and solution-focused.',
@@ -82,10 +82,10 @@ export function OnboardingWizard() {
         <div className="flex items-center justify-center gap-2 mb-2">
           {steps.map((s, i) => (
             <div key={s.num} className="flex items-center gap-2">
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${step >= s.num ? 'bg-indigo-500 text-white' : 'bg-muted text-muted-foreground'}`}>
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${step >= s.num ? 'bg-[var(--color-accent)] text-[var(--color-on-accent)]' : 'bg-muted text-muted-foreground'}`}>
                 {s.num}
               </div>
-              {i < steps.length - 1 && <div className={`w-6 h-0.5 ${step > s.num ? 'bg-indigo-500' : 'bg-muted'}`} />}
+              {i < steps.length - 1 && <div className={`w-6 h-0.5 ${step > s.num ? 'bg-[var(--color-accent)]' : 'bg-muted'}`} />}
             </div>
           ))}
         </div>
@@ -174,7 +174,7 @@ export function OnboardingWizard() {
               <div className="space-y-4">
                 <h2 className="text-xl font-bold">Get Your Embed Code</h2>
                 <p className="text-sm text-muted-foreground">Paste this on any website to add the chat widget.</p>
-                <pre className="bg-zinc-900 text-green-400 p-3 rounded-lg text-xs font-mono overflow-x-auto whitespace-pre-wrap break-all">
+                <pre className="bg-[#0B1020] text-[#A5B4FC] border border-white/10 p-3 rounded-lg text-xs font-mono overflow-x-auto whitespace-pre-wrap break-all">
                   {embedCode}
                 </pre>
                 <Button variant="outline" onClick={handleCopyEmbed} className="w-full" aria-label="Copy embed code">
@@ -182,7 +182,7 @@ export function OnboardingWizard() {
                 </Button>
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => setStep(3)} className="flex-1" aria-label="Back">Back</Button>
-                  <Button onClick={handleFinish} className="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white" aria-label="Open dashboard">
+                  <Button onClick={handleFinish} className="flex-1" aria-label="Open dashboard">
                     Open Dashboard 🚀
                   </Button>
                 </div>

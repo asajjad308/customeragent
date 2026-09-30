@@ -19,7 +19,7 @@ export const PLATFORMS: Platform[] = [
 export const PLATFORM_META: Record<Platform, PlatformMeta> = {
   WEBSITE: {
     label: 'Website',
-    color: '#6366F1',
+    color: '#4F46E5',
     bgColor: '#EEF2FF',
     textColor: '#4338CA',
     description: 'Embeddable web widget',

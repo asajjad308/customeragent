@@ -36,7 +36,7 @@ export function AnalyticsPanel() {
     [analytics.feedbacks]
   );
 
-  const CHART_COLORS = ['#6366F1', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981'];
+  const CHART_COLORS = ['#4F46E5', '#7C3AED', '#0891B2', '#DB2777', '#D97706'];
 
   return (
     <div className="space-y-4">
@@ -45,7 +45,7 @@ export function AnalyticsPanel() {
         <Card>
           <CardContent className="p-3">
             <div className="flex items-center gap-2 mb-1">
-              <MessageSquare className="w-4 h-4 text-indigo-500" />
+              <MessageSquare className="w-4 h-4 text-[var(--color-accent)]" />
               <span className="text-xs text-muted-foreground">Today</span>
             </div>
             <div className="text-2xl font-bold">{analytics.messagesToday}</div>
@@ -56,7 +56,7 @@ export function AnalyticsPanel() {
         <Card>
           <CardContent className="p-3">
             <div className="flex items-center gap-2 mb-1">
-              <Clock className="w-4 h-4 text-blue-500" />
+              <Clock className="w-4 h-4 text-[#0891B2] dark:text-[#22D3EE]" />
               <span className="text-xs text-muted-foreground">Avg time</span>
             </div>
             <div className="text-2xl font-bold">{avgResponseTime}s</div>

@@ -15,7 +15,6 @@ import { RightPanel } from '@/components/sidebar/RightPanel';
 import { ChatArea } from '@/components/chat/ChatArea';
 import { InputBar } from '@/components/chat/InputBar';
 import { HumanTakeoverBar, useHumanTakeover } from '@/components/chat/HumanTakeover';
-import { themes } from '@/lib/themes';
 import { useAppStore } from '@/store';
 import { useChat } from '@/hooks/useChat';
 import KnowledgeBasePage from '@/app/knowledge-base/page';
@@ -50,7 +49,6 @@ export default function DashboardPage() {
   }, []);
 
   const {
-    theme,
     getActiveBot,
     activeBotId,
     createConversation,
@@ -157,8 +155,6 @@ export default function DashboardPage() {
     setSidebarOpen(false);
   };
 
-  const themeClasses = themes[theme];
-
   const sidebarContent = (
     <Sidebar
       selectedNav={selectedNav}
@@ -170,7 +166,7 @@ export default function DashboardPage() {
     return (
       <div className="h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-3">
-          <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <div className="w-8 h-8 border-2 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-sm text-muted-foreground">Loading your dashboard…</p>
         </div>
       </div>
@@ -196,7 +192,7 @@ export default function DashboardPage() {
             {/* Chat column */}
             <div className="flex-1 flex flex-col min-w-0">
               {/* Top bar */}
-              <div className={`h-14 ${themeClasses.sidebar} border-b flex items-center justify-between px-4 shrink-0`}>
+              <div className={`h-14 bg-[var(--surface-0)] border-[var(--color-border-subtle)] border-b flex items-center justify-between px-4 shrink-0`}>
                 <div className="flex items-center gap-3">
                   <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
                     <SheetTrigger asChild>
@@ -269,7 +265,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className={`h-screen flex overflow-hidden ${themeClasses.background}`}>
+    <div className="h-screen flex overflow-hidden bg-[var(--color-bg-base)]">
       {/* Left sidebar — hidden on mobile, shown on md+ */}
       <div className="hidden md:flex h-full">
         {sidebarContent}

@@ -14,8 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { useAppStore } from '@/store';
-import { themes } from '@/lib/themes';
-import type { ThemeKey } from '@/store';
+import { ColorModePicker } from '@/components/ColorModePicker';
 
 function uuid() {
   return crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -175,7 +174,7 @@ function AiProvidersTab() {
                   key={k.id}
                   className="flex items-center gap-3 p-3 rounded-lg border border-border bg-background"
                 >
-                  <Cpu className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+                  <Cpu className="w-4 h-4 text-[var(--color-accent)] flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-semibold">{PROVIDER_META[k.provider]?.label ?? k.provider}</span>
@@ -214,8 +213,8 @@ function AiProvidersTab() {
 
 const PLAN_DETAILS = {
   free:       { label: 'Free',       price: '$0',   messages: '1,000',  agents: '1',       color: 'bg-slate-500' },
-  pro:        { label: 'Pro',        price: '$49',  messages: '10,000', agents: '5',       color: 'bg-indigo-500' },
-  enterprise: { label: 'Enterprise', price: '$149', messages: 'Unlimited', agents: 'Unlimited', color: 'bg-violet-600' },
+  pro:        { label: 'Pro',        price: '$49',  messages: '10,000', agents: '5',       color: 'bg-[#4F46E5]' },
+  enterprise: { label: 'Enterprise', price: '$149', messages: 'Unlimited', agents: 'Unlimited', color: 'bg-[#7C3AED]' },
 };
 
 function BillingTab() {
@@ -312,7 +311,7 @@ function BillingTab() {
           const d = PLAN_DETAILS[id];
           const isCurrent = plan === id;
           return (
-            <Card key={id} className={isCurrent ? 'border-indigo-500 border-2' : ''}>
+            <Card key={id} className={isCurrent ? 'border-[var(--color-accent)] border-2' : ''}>
               <CardContent className="pt-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 font-semibold">
@@ -349,7 +348,7 @@ function BillingTab() {
 }
 
 export default function SettingsPage() {
-  const { settings, theme, updateSettings, updateTheme, analytics } = useAppStore();
+  const { settings, updateSettings, analytics } = useAppStore();
   const [showApiKey, setShowApiKey] = useState(false);
   const [newWord, setNewWord] = useState('');
 
@@ -364,7 +363,7 @@ export default function SettingsPage() {
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-4 max-w-2xl mx-auto w-full">
       <div className="flex items-center gap-3">
-        <Settings className="w-6 h-6 text-indigo-500" />
+        <Settings className="w-6 h-6 text-[var(--color-accent)]" />
         <h1 className="text-2xl font-bold">Settings</h1>
       </div>
 
@@ -461,22 +460,8 @@ export default function SettingsPage() {
           <Card>
             <CardContent className="pt-4 space-y-4">
               <div className="grid gap-1.5">
-                <Label>Theme</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(Object.keys(themes) as ThemeKey[]).map((key) => (
-                    <button
-                      key={key}
-                      onClick={() => { updateTheme(key); toast.success(`Theme changed to ${themes[key].name}`); }}
-                      className={`p-3 rounded-lg border-2 text-left transition-all text-xs ${
-                        theme === key ? 'border-indigo-500 bg-indigo-50' : 'border-border hover:border-indigo-300'
-                      }`}
-                      aria-label={`Select ${themes[key].name} theme`}
-                    >
-                      <div className={`w-full h-8 rounded mb-2 ${themes[key].background}`} />
-                      <div className="font-medium">{themes[key].name}</div>
-                    </button>
-                  ))}
-                </div>
+                <Label>Colour mode</Label>
+                <ColorModePicker />
               </div>
               <Separator />
               <div className="grid gap-1.5">

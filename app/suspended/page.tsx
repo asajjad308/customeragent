@@ -13,7 +13,7 @@ export default function SuspendedPage() {
         <h1 className="text-2xl font-bold">Account Suspended</h1>
         <p className="text-muted-foreground text-sm leading-relaxed">
           Your account has been suspended. Please contact{' '}
-          <a href="mailto:support@supportai.app" className="text-indigo-500 underline underline-offset-2">
+          <a href="mailto:support@supportai.app" className="text-[var(--color-accent)] underline underline-offset-2">
             support@supportai.app
           </a>{' '}
           to resolve this.

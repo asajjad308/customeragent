@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAppStore } from '@/store';
 
-const CHART_COLORS = ['#6366F1', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981'];
+const CHART_COLORS = ['#4F46E5', '#7C3AED', '#0891B2', '#DB2777', '#D97706'];
 
 function StatCard({
   icon: Icon,
@@ -85,7 +85,7 @@ export function AnalyticsPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          <BarChart3 className="w-6 h-6 text-indigo-500" />
+          <BarChart3 className="w-6 h-6 text-[var(--color-accent)]" />
           Analytics
         </h1>
         <p className="text-sm text-muted-foreground mt-0.5">Live metrics across all your agents</p>
@@ -98,21 +98,21 @@ export function AnalyticsPage() {
           label="Messages today"
           value={analytics.messagesToday}
           sub="resets at midnight"
-          color="bg-indigo-500"
+          color="bg-[#4F46E5]"
         />
         <StatCard
           icon={TrendingUp}
           label="Total messages"
           value={analytics.totalMessages.toLocaleString()}
           sub="all time"
-          color="bg-blue-500"
+          color="bg-[#0891B2]"
         />
         <StatCard
           icon={Clock}
           label="Avg response"
           value={avgResponseTime}
           sub={analytics.responseTimes.length ? `${analytics.responseTimes.length} samples` : 'no data yet'}
-          color="bg-violet-500"
+          color="bg-[#7C3AED]"
         />
         <StatCard
           icon={CheckCircle}

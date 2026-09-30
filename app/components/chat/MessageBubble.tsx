@@ -65,7 +65,7 @@ export function MessageBubble({ message, isUser, isHumanAgent, onFeedback }: Mes
           <p className="text-xs text-muted-foreground mb-1 ml-1">John (Human Agent)</p>
         )}
         {message.kbUsed && !isUser && (
-          <p className="text-xs text-indigo-500 mb-1 ml-1">📚 Using knowledge base</p>
+          <p className="text-xs text-[var(--color-accent)] mb-1 ml-1">📚 Using knowledge base</p>
         )}
         <Card className={`py-3 px-4 ${bubbleRadius} ${isUser ? 'bg-primary text-primary-foreground' : 'bg-card'}`}>
           <p className={`${fontSize} leading-relaxed`}>{message.content}</p>

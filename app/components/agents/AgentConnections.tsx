@@ -71,7 +71,7 @@ export function AgentConnections({ agent, allAgents }: AgentConnectionsProps) {
                   {/* Source agent */}
                   <div
                     className="px-2 py-1 rounded-md text-[11px] font-medium text-white"
-                    style={{ backgroundColor: agent.avatarColor || '#2563EB' }}
+                    style={{ backgroundColor: agent.avatarColor || '#4F46E5' }}
                   >
                     {agent.name}
                   </div>

@@ -14,9 +14,9 @@ function base(content: string): string {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f9fafb;margin:0;padding:32px 16px}
 .card{background:#fff;border-radius:12px;padding:32px;max-width:480px;margin:0 auto;box-shadow:0 1px 3px rgba(0,0,0,.08)}
-.logo{font-size:20px;font-weight:700;color:#6366F1;margin-bottom:24px}
+.logo{font-size:20px;font-weight:700;color:#4F46E5;margin-bottom:24px}
 h2{margin:0 0 12px;font-size:20px;color:#111}p{margin:0 0 16px;color:#374151;font-size:15px;line-height:1.6}
-.btn{display:inline-block;background:#6366F1;color:#fff!important;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px}
+.btn{display:inline-block;background:#4F46E5;color:#fff!important;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px}
 .footer{margin-top:24px;font-size:12px;color:#9CA3AF}hr{border:none;border-top:1px solid #E5E7EB;margin:24px 0}</style></head>
 <body><div class="card"><div class="logo">SupportAI</div>${content}<hr>
 <div class="footer">© ${new Date().getFullYear()} SupportAI. If you didn't request this, you can safely ignore this email.</div>

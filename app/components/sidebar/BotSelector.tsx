@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useAppStore } from '@/store';
 
-const COLOR_OPTIONS = ['#6366F1', '#8B5CF6', '#34D399', '#F59E0B', '#EF4444', '#3B82F6'];
+const COLOR_OPTIONS = ['#4F46E5', '#7C3AED', '#0891B2', '#059669', '#D97706', '#DB2777'];
 
 export function BotSelector() {
   const { bots, activeBotId, setActiveBot, createAgent, getActiveBot } = useAppStore();

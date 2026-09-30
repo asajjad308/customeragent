@@ -89,7 +89,7 @@ export default function IntegrationsPage() {
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-4 max-w-2xl mx-auto w-full">
       <div className="flex items-center gap-3">
-        <Link2 className="w-6 h-6 text-indigo-500" />
+        <Link2 className="w-6 h-6 text-[var(--color-accent)]" />
         <h1 className="text-2xl font-bold">Integrations</h1>
       </div>
 
@@ -167,7 +167,7 @@ export default function IntegrationsPage() {
       <IntegrationCard
         title="Email"
         description="Send chat transcripts to email"
-        icon={<Mail className="w-5 h-5 text-blue-500" />}
+        icon={<Mail className="w-5 h-5 text-[#0891B2] dark:text-[#22D3EE]" />}
         connected={email.connected}
       >
         <div className="space-y-2">

@@ -256,7 +256,7 @@ export function AgentChatPreview({ agent, onClose }: AgentChatPreviewProps) {
         <div className="flex items-center gap-2.5">
           <div
             className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-[12px] font-bold"
-            style={{ backgroundColor: agent.avatarColor || '#2563EB' }}
+            style={{ backgroundColor: agent.avatarColor || '#4F46E5' }}
           >
             {agent.name.charAt(0)}
           </div>
@@ -289,7 +289,7 @@ export function AgentChatPreview({ agent, onClose }: AgentChatPreviewProps) {
                 className={cn(
                   'max-w-[80%] rounded-2xl px-3 py-2 text-[12px] leading-relaxed',
                   msg.role === 'user'
-                    ? 'bg-[var(--color-accent)] text-white rounded-br-sm'
+                    ? 'bg-[var(--color-accent)] text-[var(--color-on-accent)] rounded-br-sm'
                     : 'bg-[var(--color-bg-subtle)] text-[var(--color-text-primary)] rounded-bl-sm border border-[var(--color-border-subtle)]',
                 )}
               >
@@ -393,7 +393,7 @@ export function AgentChatPreview({ agent, onClose }: AgentChatPreviewProps) {
                 <button
                   onClick={handleInfoSubmit}
                   disabled={!infoForm.name.trim() || !EMAIL_RE.test(infoForm.email)}
-                  className="flex-1 py-1.5 rounded-lg bg-[var(--color-accent)] text-white text-[12px] font-semibold disabled:opacity-40 hover:bg-[var(--color-accent-hover)] transition-colors"
+                  className="flex-1 py-1.5 rounded-lg bg-[var(--color-accent)] text-[var(--color-on-accent)] text-[12px] font-semibold disabled:opacity-40 hover:bg-[var(--color-accent-hover)] transition-colors"
                 >
                   Continue
                 </button>
@@ -435,7 +435,7 @@ export function AgentChatPreview({ agent, onClose }: AgentChatPreviewProps) {
               <div className="flex gap-2">
                 <button
                   onClick={handleConfirm}
-                  className="flex-1 py-1.5 rounded-lg bg-[var(--color-accent)] text-white text-[12px] font-semibold hover:bg-[var(--color-accent-hover)] transition-colors"
+                  className="flex-1 py-1.5 rounded-lg bg-[var(--color-accent)] text-[var(--color-on-accent)] text-[12px] font-semibold hover:bg-[var(--color-accent-hover)] transition-colors"
                 >
                   Confirm Booking
                 </button>
@@ -538,7 +538,7 @@ export function AgentChatPreview({ agent, onClose }: AgentChatPreviewProps) {
           <button
             type="submit"
             disabled={!input.trim() || isStreaming}
-            className="w-7 h-7 rounded-lg bg-[var(--color-accent)] text-white flex items-center justify-center disabled:opacity-40 hover:bg-[var(--color-accent-hover)] transition-colors flex-shrink-0"
+            className="w-7 h-7 rounded-lg bg-[var(--color-accent)] text-[var(--color-on-accent)] flex items-center justify-center disabled:opacity-40 hover:bg-[var(--color-accent-hover)] transition-colors flex-shrink-0"
           >
             {isStreaming ? <Spinner size="xs" /> : <Send size={12} />}
           </button>

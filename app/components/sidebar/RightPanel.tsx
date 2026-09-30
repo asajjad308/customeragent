@@ -88,7 +88,7 @@ export function RightPanel() {
               <div>
                 <label className="text-sm font-medium mb-1.5 block">Avatar Color</label>
                 <div className="flex gap-2">
-                  {['#6366F1', '#8B5CF6', '#34D399', '#F59E0B', '#EF4444', '#3B82F6'].map((color) => (
+                  {['#4F46E5', '#7C3AED', '#0891B2', '#059669', '#D97706', '#DB2777'].map((color) => (
                     <button
                       key={color}
                       className={`w-7 h-7 rounded-full border-2 transition-transform ${bot.color === color ? 'border-foreground scale-110' : 'border-transparent'}`}

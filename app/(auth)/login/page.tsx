@@ -48,15 +48,16 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-sm space-y-6">
+    <div className="relative min-h-screen overflow-hidden bg-background flex items-center justify-center p-4">
+      <div aria-hidden="true" className="aurora-glow" />
+      <div className="relative w-full max-w-sm space-y-6">
         <div className="text-center space-y-2">
           <div className="flex justify-center">
-            <div className="w-12 h-12 rounded-xl bg-indigo-500 flex items-center justify-center">
-              <Bot className="w-7 h-7 text-white" />
+            <div className="brand-mark w-12 h-12 rounded-2xl flex items-center justify-center shadow-lift">
+              <Bot className="w-6 h-6" />
             </div>
           </div>
-          <h1 className="text-2xl font-bold">Welcome back</h1>
+          <h1 className="text-[28px] font-semibold tracking-tight">Welcome back</h1>
           <p className="text-sm text-muted-foreground">Sign in to your SupportAI account</p>
         </div>
 
@@ -99,7 +100,7 @@ function LoginForm() {
             />
           </div>
           <div className="flex justify-end -mt-2">
-            <Link href="/forgot-password" className="text-xs text-muted-foreground hover:text-indigo-500 transition-colors">
+            <Link href="/forgot-password" className="text-xs text-muted-foreground hover:text-brand-text transition-colors">
               Forgot password?
             </Link>
           </div>
@@ -111,7 +112,7 @@ function LoginForm() {
 
         <p className="text-center text-sm text-muted-foreground">
           Don&apos;t have an account?{' '}
-          <Link href="/register" className="text-indigo-500 hover:underline font-medium">
+          <Link href="/register" className="text-brand-text hover:underline font-medium">
             Create one
           </Link>
         </p>

@@ -64,7 +64,7 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-background p-6 space-y-6 max-w-7xl mx-auto">
       <div className="flex items-center gap-3">
-        <Shield className="w-6 h-6 text-indigo-500" />
+        <Shield className="w-6 h-6 text-[var(--color-accent)]" />
         <h1 className="text-2xl font-bold">Admin Panel</h1>
       </div>
 
@@ -74,7 +74,7 @@ export default function AdminPage() {
           { label: 'Total Tenants', value: stats.total, icon: <Users className="w-4 h-4" /> },
           { label: 'Paid Tenants', value: stats.paid, icon: <CheckCircle className="w-4 h-4 text-green-500" /> },
           { label: 'Suspended', value: stats.suspended, icon: <Ban className="w-4 h-4 text-red-500" /> },
-          { label: 'Msgs This Month', value: stats.messages.toLocaleString(), icon: <MessageSquare className="w-4 h-4 text-indigo-500" /> },
+          { label: 'Msgs This Month', value: stats.messages.toLocaleString(), icon: <MessageSquare className="w-4 h-4 text-[var(--color-accent)]" /> },
         ].map((s) => (
           <div key={s.label} className="rounded-xl border bg-card p-4 space-y-1">
             <div className="flex items-center gap-2 text-muted-foreground text-sm">{s.icon}{s.label}</div>
@@ -131,7 +131,7 @@ export default function AdminPage() {
                 <td className="px-4 py-3">
                   <span className={`text-xs px-2 py-0.5 rounded-full ${
                     t.subscriptionStatus === 'active' ? 'bg-green-100 text-green-700' :
-                    t.subscriptionStatus === 'trialing' ? 'bg-blue-100 text-blue-700' :
+                    t.subscriptionStatus === 'trialing' ? 'bg-[var(--color-accent-subtle)] text-[var(--color-accent)]' :
                     t.subscriptionStatus === 'past_due' ? 'bg-red-100 text-red-700' :
                     'bg-muted text-muted-foreground'
                   }`}>

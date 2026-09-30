@@ -60,15 +60,16 @@ function ResetForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-sm space-y-6">
+    <div className="relative min-h-screen overflow-hidden bg-background flex items-center justify-center p-4">
+      <div aria-hidden="true" className="aurora-glow" />
+      <div className="relative w-full max-w-sm space-y-6">
         <div className="text-center space-y-2">
           <div className="flex justify-center">
-            <div className="w-12 h-12 rounded-xl bg-indigo-500 flex items-center justify-center">
-              <Bot className="w-7 h-7 text-white" />
+            <div className="brand-mark w-12 h-12 rounded-2xl flex items-center justify-center shadow-lift">
+              <Bot className="w-6 h-6" />
             </div>
           </div>
-          <h1 className="text-2xl font-bold">Set new password</h1>
+          <h1 className="text-[28px] font-semibold tracking-tight">Set new password</h1>
         </div>
         <Suspense>
           <ResetForm />

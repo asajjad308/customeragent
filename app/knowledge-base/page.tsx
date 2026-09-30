@@ -97,7 +97,7 @@ export default function KnowledgeBasePage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <BookOpen className="w-6 h-6 text-indigo-500" />
+          <BookOpen className="w-6 h-6 text-[var(--color-accent)]" />
           <h1 className="text-2xl font-bold">Knowledge Base</h1>
           <Badge variant="secondary">{agentEntries.length} entries · {kbFiles.length} files</Badge>
         </div>
@@ -146,7 +146,7 @@ export default function KnowledgeBasePage() {
         <CardContent className="space-y-4">
           <div
             className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${
-              dragging ? 'border-indigo-500 bg-indigo-50' : 'border-border hover:border-indigo-400'
+              dragging ? 'border-[var(--color-accent)] bg-[var(--color-accent-subtle)]' : 'border-border hover:border-[var(--color-accent)]'
             }`}
             onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
             onDragLeave={() => setDragging(false)}
@@ -166,7 +166,7 @@ export default function KnowledgeBasePage() {
             <div className="space-y-2">
               {kbFiles.map((file) => (
                 <div key={file.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                  <FileText className="w-4 h-4 text-indigo-500 shrink-0" />
+                  <FileText className="w-4 h-4 text-[var(--color-accent)] shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">{file.name}</div>
                     <div className="text-xs text-muted-foreground">{formatBytes(file.size)}</div>
