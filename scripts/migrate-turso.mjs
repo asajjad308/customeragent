@@ -5,13 +5,16 @@ import { createClient } from '@libsql/client';
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-const url = process.env.TURSO_DATABASE_URL;
+// Values pasted into Vercel often keep quotes or a "Bearer " prefix, which Turso rejects with a 400
+const clean = (v) => v?.trim().replace(/^["']+|["']+$/g, '').replace(/^Bearer\s+/i, '').trim() || undefined;
+
+const url = clean(process.env.TURSO_DATABASE_URL);
 if (!url) {
   console.log('[migrate-turso] TURSO_DATABASE_URL not set, skipping');
   process.exit(0);
 }
 
-const db = createClient({ url, authToken: process.env.TURSO_AUTH_TOKEN });
+const db = createClient({ url, authToken: clean(process.env.TURSO_AUTH_TOKEN) });
 const dir = join(process.cwd(), 'prisma', 'migrations');
 
 await db.execute(`CREATE TABLE IF NOT EXISTS "_app_migrations" (
