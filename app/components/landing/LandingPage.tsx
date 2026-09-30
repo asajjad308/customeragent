@@ -461,7 +461,11 @@ export function LandingPage() {
               <Link href="/login" className="hover:text-foreground transition-colors">Sign in</Link>
               <Link href="/register" className="hover:text-foreground transition-colors">Sign up</Link>
             </div>
-            <p className="text-sm text-muted-foreground">© {new Date().getFullYear()} SupportAI. All rights reserved.</p>
+            <p className="text-sm text-muted-foreground">
+              © {new Date().getFullYear()} SupportAI · A{' '}
+              <a href="https://www.northlane.live/" className="text-foreground underline underline-offset-4 hover:text-brand-text">Northlane</a>{' '}
+              product
+            </p>
           </div>
         </div>
       </footer>

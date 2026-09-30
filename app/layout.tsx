@@ -31,6 +31,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXTAUTH_URL ?? "https://supportai.northlane.live"),
   title: "SupportAI - Customer Support Chatbot SaaS",
   description: "AI-powered customer support chatbot for your business",
 };
